@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="MyiGraphics" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/MyiGraphics" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/MyiGraphics" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="MainSetup.pdf" />
+		<Unit filename="MyiGraphics.cbp" />
+		<Unit filename="MyiGraphics.layout" />
+		<Unit filename="SolarSystem.cpp" />
+		<Unit filename="glaux.dll" />
+		<Unit filename="glaux.h" />
+		<Unit filename="glaux.lib" />
+		<Unit filename="glu32.dll" />
+		<Unit filename="glut.h" />
+		<Unit filename="glut32.dll" />
+		<Unit filename="iDoc.pdf" />
+		<Unit filename="iGraphics.h" />
+		<Unit filename="iMain.cpp" />
+		<Unit filename="libglut32.a" />
+		<Unit filename="opengl32.dll" />
+		<Unit filename="stb_image.h" />
+		<Unit filename="tasks.json" />
+		<Extensions>
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
