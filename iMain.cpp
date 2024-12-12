@@ -31,23 +31,7 @@
 #define MIN_SCALE 5
 #define MAX_SCALE 100
 
-// Function prototypes
-void drawGrid(double gridSpacing);
-void drawAxes();
-double evaluateFunction(double x, const char* func);
-void plotFunction(const char* func, double r, double g, double b);
-void plotEllipse(double a, double b);
-void plotParabola(double a, double b, double c);
-void plotHyperbola(double a, double b);
-void plotLine(double m, double c);
-void plotFunctions();
-void plotActiveShape();
-void drawUI();
-void handleUserInput(unsigned char key);
-void toggleFunction(unsigned char key);
-void testEvaluateFunction();
-
-// Structure to hold equation parameters
+// Structure Definitions
 struct TrigFunction {
     double A; // Amplitude
     double B; // Frequency
@@ -75,45 +59,263 @@ struct Hyperbola {
     bool isActive;
 };
 
-
-// Global variables
+// Global Variables
 double scaleX = INITIAL_SCALE_X, scaleY = INITIAL_SCALE_Y;
 double step = STEP_INITIAL;
 double offsetX = 1, offsetY = 1;
 
-bool showSin = true, showCos = true, showTan = false, showExp = false, show_xSquare = false;
+bool showSin = true;
+bool showCos = true;
+bool showTan = false;
+bool showExp = false;
+bool show_xSquare = false;
 bool showGridFlag = true;
-
 bool showTextBox = false;
+bool isEnteringEquation = false;
+bool isPanning = false;
+
 char userInput[MAX_INPUT_LENGTH] = "";
-int inputIndex = 0;
-double coefficients[MAX_COEFFICIENTS] = {0};
+char equationInput[MAX_INPUT_LENGTH] = "";
+char currentFunction[10] = "";
 char activeShape[MAX_SHAPE_NAME] = "";
 
-bool isPanning = false;
+int inputIndex = 0;
 int lastMouseX, lastMouseY;
 
-// Global variables for custom functions
-//trigono-related function prototypes
+double coefficients[MAX_COEFFICIENTS] = {0};
+
+// Structure Instances
 TrigFunction customSin = {1.0, 1.0, 0.0, 0.0};
 TrigFunction customCos = {1.0, 1.0, 0.0, 0.0};
 TrigFunction customTan = {1.0, 1.0, 0.0, 0.0};
-bool isEnteringEquation = false;
-char equationInput[MAX_INPUT_LENGTH] = "";
-char currentFunction[10] = ""; // To track which function I'm editing
-
-
-void removeWhitespaces(char *str);
-//polynomial-related function prototypes
 Polynomial customPoly = {0, 0, 0, 0, 0, false};
-void readPolynomial(const char* equation, float *a4, float *a3, float *a2, float *a1, float *a0);
-
-//conics-related function prototypes
 Circle customCircle = {0, 0, 0, false};
 Ellipse customEllipse = {0, 0, 0, 0, false};
 Hyperbola customHyperbola = {0, 0, 0, 0, false};
 
-// Function to draw the grid and axes
+// Helper Functions
+void removeWhitespaces(char *str) {
+    char *i = str;
+    for (char *j = str; *j != '\0'; j++) {
+        if (*j != ' ' && *j != '\t' && *j != '\n') {
+            *i = *j;
+            i++;
+        }
+    }
+    *i = '\0';
+}
+
+float parseNumber(char **ptr) {
+    float num = 0;
+    int sign = 1;
+    
+    if (**ptr == '-') {
+        sign = -1;
+        (*ptr)++;
+    } else if (**ptr == '+') {
+        (*ptr)++;
+    }
+    
+    while (**ptr >= '0' && **ptr <= '9') {
+        num = num * 10 + (**ptr - '0');
+        (*ptr)++;
+    }
+    
+    if (**ptr == '.') {
+        (*ptr)++;
+        float factor = 0.1;
+        while (**ptr >= '0' && **ptr <= '9') {
+            num += (**ptr - '0') * factor;
+            factor *= 0.1;
+            (*ptr)++;
+        }
+    }
+    
+    return sign * num;
+}
+
+void readPolynomial(const char* equation, float *a4, float *a3, float *a2, float *a1, float *a0) {
+    *a4 = 0; *a3 = 0; *a2 = 0; *a1 = 0; *a0 = 0;
+    
+    char cleanEq[200];
+    strcpy(cleanEq, equation);
+    removeWhitespaces(cleanEq);
+    
+    char *term = strtok(cleanEq, "+-");
+    while (term != NULL) {
+        float coeff = 1.0;
+        int power = 0;
+        
+        // Parse coefficient
+        char *xPos = strchr(term, 'x');
+        if (xPos != NULL) {
+            if (xPos != term) {
+                char coeffStr[20] = {0};
+                strncpy(coeffStr, term, xPos - term);
+                coeff = atof(coeffStr);
+            }
+            
+            // Parse power
+            if (*(xPos + 1) == '^') {
+                power = atoi(xPos + 2);
+            } else {
+                power = 1;
+            }
+        } else {
+            coeff = atof(term);
+            power = 0;
+        }
+        
+        // Assign to appropriate coefficient
+        switch(power) {
+            case 4: *a4 = coeff; break;
+            case 3: *a3 = coeff; break;
+            case 2: *a2 = coeff; break;
+            case 1: *a1 = coeff; break;
+            case 0: *a0 = coeff; break;
+        }
+        
+        term = strtok(NULL, "+-");
+    }
+}
+
+int readCircle(const char *equation, float *h, float *k, float *r) {
+    *h = 0; *k = 0; *r = 0;
+    
+    char cleanEquation[200];
+    strcpy(cleanEquation, equation);
+    removeWhitespaces(cleanEquation);
+    
+    char *ptr = cleanEquation;
+    
+    if (*ptr++ != '(') return 0;
+    if (*ptr++ != 'x') return 0;
+    
+    if (*ptr == '-' || *ptr == '+') {
+        float sign = (*ptr++ == '-') ? 1 : -1;
+        if (!(*ptr >= '0' && *ptr <= '9')) return 0;
+        *h = sign * parseNumber(&ptr);
+    }
+    
+    if (*ptr++ != ')') return 0;
+    if (*ptr++ != '^') return 0;
+    if (*ptr++ != '2') return 0;
+    if (*ptr++ != '+') return 0;
+    if (*ptr++ != '(') return 0;
+    if (*ptr++ != 'y') return 0;
+    
+    if (*ptr == '-' || *ptr == '+') {
+        float sign = (*ptr++ == '-') ? 1 : -1;
+        if (!(*ptr >= '0' && *ptr <= '9')) return 0;
+        *k = sign * parseNumber(&ptr);
+    }
+    
+    if (*ptr++ != ')') return 0;
+    if (*ptr++ != '^') return 0;
+    if (*ptr++ != '2') return 0;
+    if (*ptr++ != '=') return 0;
+    
+    *r = sqrt(parseNumber(&ptr));
+    
+    return 1;
+}
+
+int readEllipse(const char *equation, float *h, float *k, float *a, float *b) {
+    *h = 0; *k = 0; *a = 0; *b = 0;
+    
+    char cleanEquation[200];
+    strcpy(cleanEquation, equation);
+    removeWhitespaces(cleanEquation);
+    
+    char *ptr = cleanEquation;
+    
+    if (*ptr++ != '(') return 0;
+    if (*ptr++ != 'x') return 0;
+    
+    if (*ptr == '-' || *ptr == '+') {
+        float sign = (*ptr++ == '-') ? 1 : -1;
+        if (!(*ptr >= '0' && *ptr <= '9')) return 0;
+        *h = sign * parseNumber(&ptr);
+    }
+    
+    if (*ptr++ != ')') return 0;
+    if (*ptr++ != '^') return 0;
+    if (*ptr++ != '2') return 0;
+    if (*ptr++ != '/') return 0;
+    
+    *a = sqrt(parseNumber(&ptr));
+    
+    if (*ptr++ != '+') return 0;
+    if (*ptr++ != '(') return 0;
+    if (*ptr++ != 'y') return 0;
+    
+    if (*ptr == '-' || *ptr == '+') {
+        float sign = (*ptr++ == '-') ? 1 : -1;
+        if (!(*ptr >= '0' && *ptr <= '9')) return 0;
+        *k = sign * parseNumber(&ptr);
+    }
+    
+    if (*ptr++ != ')') return 0;
+    if (*ptr++ != '^') return 0;
+    if (*ptr++ != '2') return 0;
+    if (*ptr++ != '/') return 0;
+    
+    *b = sqrt(parseNumber(&ptr));
+    
+    if (*ptr++ != '=') return 0;
+    if (*ptr++ != '1') return 0;
+    
+    return 1;
+}
+
+int readHyperbola(const char *equation, float *h, float *k, float *a, float *b) {
+    *h = 0; *k = 0; *a = 0; *b = 0;
+    
+    char cleanEquation[200];
+    strcpy(cleanEquation, equation);
+    removeWhitespaces(cleanEquation);
+    
+    char *ptr = cleanEquation;
+    
+    if (*ptr++ != '(') return 0;
+    if (*ptr++ != 'x') return 0;
+    
+    if (*ptr == '-' || *ptr == '+') {
+        float sign = (*ptr++ == '-') ? 1 : -1;
+        if (!(*ptr >= '0' && *ptr <= '9')) return 0;
+        *h = sign * parseNumber(&ptr);
+    }
+    
+    if (*ptr++ != ')') return 0;
+    if (*ptr++ != '^') return 0;
+    if (*ptr++ != '2') return 0;
+    if (*ptr++ != '/') return 0;
+    
+    *a = sqrt(parseNumber(&ptr));
+    
+    if (*ptr++ != '-') return 0;
+    if (*ptr++ != '(') return 0;
+    if (*ptr++ != 'y') return 0;
+    
+    if (*ptr == '-' || *ptr == '+') {
+        float sign = (*ptr++ == '-') ? 1 : -1;
+        if (!(*ptr >= '0' && *ptr <= '9')) return 0;
+        *k = sign * parseNumber(&ptr);
+    }
+    
+    if (*ptr++ != ')') return 0;
+    if (*ptr++ != '^') return 0;
+    if (*ptr++ != '2') return 0;
+    if (*ptr++ != '/') return 0;
+    
+    *b = sqrt(parseNumber(&ptr));
+    
+    if (*ptr++ != '=') return 0;
+    if (*ptr++ != '1') return 0;
+    
+    return 1;
+}
+
 void drawGrid(double gridSpacing) {
     if (!showGridFlag) return;
 
@@ -138,22 +340,6 @@ void drawAxes() {
     drawGrid(GRID_SPACING);
 }
 
-
-// Function to remove whitespaces
-void removeWhitespaces(char *str) {
-    char *i = str;
-    for (char *j = str; *j != '\0'; j++) {
-        if (*j != ' ' && *j != '\t' && *j != '\n') {
-            *i = *j;
-            i++;
-        }
-    }
-    *i = '\0';
-}
-
-
-
-// Function to evaluate mathematical functions
 double evaluateFunction(double x, const char* func) {
     if (strcmp(func, "custom_sin") == 0) {
         return customSin.A * sin(customSin.B * x + customSin.C) + customSin.D;
@@ -214,7 +400,6 @@ double evaluateFunction(double x, const char* func) {
     return 0;
 }
 
-
 bool parseEquation(const char* equation) {
     char cleanEq[MAX_INPUT_LENGTH];
     strncpy(cleanEq, equation, MAX_INPUT_LENGTH - 1);
@@ -272,7 +457,6 @@ bool parseEquation(const char* equation) {
 }
 
 
-// Function to plot a generic mathematical function
 void plotFunction(const char* func, double r, double g, double b) {
     iSetColor(r, g, b);
     for (double x = -10; x <= 10; x += step) {
@@ -350,7 +534,7 @@ void plotLine(double m, double c) {
     }
 }
 
-// Function to plot all toggled functions
+
 void plotFunctions() {
     if (showSin) plotFunction("custom_sin", 0, 0, 255);     // Blue
     if (showCos) plotFunction("custom_cos", 255, 0, 0);     // Red
@@ -370,7 +554,6 @@ void plotFunctions() {
     }
 }
 
-
 // Function to plot the active shape based on user input
 void plotActiveShape() {
     if (strcmp(activeShape, "Ellipse") == 0 && inputIndex >= 2) {
@@ -388,7 +571,6 @@ void plotActiveShape() {
     }
 }
 
-// Function to draw the user interface
 void drawUI() {
     iSetColor(255, 255, 255); // White text
     iText(10, 10, "Keys for Functions:");
@@ -501,9 +683,6 @@ void drawUI() {
     }
 }
 
-
-
-// Function to handle user input from keyboard
 void handleUserInput(unsigned char key) {
     if (showTextBox) {
         if (isdigit(key) || key == '.' || key == '-' || key == '\r') {
@@ -602,8 +781,6 @@ void toggleFunction(unsigned char key) {
     }
 }
 
-// Function to handle keyboard input
-
 void iKeyboard(unsigned char key) {
     if (!isEnteringEquation && (key >= '1' && key <= '7')) {
         showTextBox = false;
@@ -688,7 +865,6 @@ void iKeyboard(unsigned char key) {
         }
     }
 }
-
 
 // Function to handle mouse clicks
 void iMouse(int button, int state, int mx, int my) {
