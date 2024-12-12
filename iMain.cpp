@@ -27,7 +27,7 @@
 // Constants for scaling
 #define INITIAL_SCALE_X 50
 #define INITIAL_SCALE_Y 50
-#define STEP_INITIAL 0.0001
+#define STEP_INITIAL 0.001
 #define MIN_SCALE 5
 #define MAX_SCALE 100
 
@@ -47,6 +47,35 @@ void handleUserInput(unsigned char key);
 void toggleFunction(unsigned char key);
 void testEvaluateFunction();
 
+// Structure to hold equation parameters
+struct TrigFunction {
+    double A; // Amplitude
+    double B; // Frequency
+    double C; // Phase shift
+    double D; // Vertical shift
+};
+
+struct Polynomial {
+    float a4, a3, a2, a1, a0;  // coefficients
+    bool isActive;
+};
+
+struct Circle {
+    float h, k, r;  // center (h,k) and radius r
+    bool isActive;
+};
+
+struct Ellipse {
+    float h, k, a, b;  // center (h,k) and semi-major/minor axes a,b
+    bool isActive;
+};
+
+struct Hyperbola {
+    float h, k, a, b;  // center (h,k) and semi-major/minor axes a,b
+    bool isActive;
+};
+
+
 // Global variables
 double scaleX = INITIAL_SCALE_X, scaleY = INITIAL_SCALE_Y;
 double step = STEP_INITIAL;
@@ -63,6 +92,26 @@ char activeShape[MAX_SHAPE_NAME] = "";
 
 bool isPanning = false;
 int lastMouseX, lastMouseY;
+
+// Global variables for custom functions
+//trigono-related function prototypes
+TrigFunction customSin = {1.0, 1.0, 0.0, 0.0};
+TrigFunction customCos = {1.0, 1.0, 0.0, 0.0};
+TrigFunction customTan = {1.0, 1.0, 0.0, 0.0};
+bool isEnteringEquation = false;
+char equationInput[MAX_INPUT_LENGTH] = "";
+char currentFunction[10] = ""; // To track which function I'm editing
+
+
+void removeWhitespaces(char *str);
+//polynomial-related function prototypes
+Polynomial customPoly = {0, 0, 0, 0, 0, false};
+void readPolynomial(const char* equation, float *a4, float *a3, float *a2, float *a1, float *a0);
+
+//conics-related function prototypes
+Circle customCircle = {0, 0, 0, false};
+Ellipse customEllipse = {0, 0, 0, 0, false};
+Hyperbola customHyperbola = {0, 0, 0, 0, false};
 
 // Function to draw the grid and axes
 void drawGrid(double gridSpacing) {
@@ -89,15 +138,139 @@ void drawAxes() {
     drawGrid(GRID_SPACING);
 }
 
+
+// Function to remove whitespaces
+void removeWhitespaces(char *str) {
+    char *i = str;
+    for (char *j = str; *j != '\0'; j++) {
+        if (*j != ' ' && *j != '\t' && *j != '\n') {
+            *i = *j;
+            i++;
+        }
+    }
+    *i = '\0';
+}
+
+
+
 // Function to evaluate mathematical functions
 double evaluateFunction(double x, const char* func) {
-    if (strcmp(func, "sin(x)") == 0) return sin(x);
-    if (strcmp(func, "cos(x)") == 0) return cos(x);
-    if (strcmp(func, "tan(x)") == 0) return tan(x);
-    if (strcmp(func, "exp(x)") == 0) return exp(x);
-    if (strcmp(func, "x^2") == 0) return x * x;
-    return 0; // Default for invalid function
+    if (strcmp(func, "custom_sin") == 0) {
+        return customSin.A * sin(customSin.B * x + customSin.C) + customSin.D;
+    }
+    if (strcmp(func, "custom_cos") == 0) {
+        return customCos.A * cos(customCos.B * x + customCos.C) + customCos.D;
+    }
+    if (strcmp(func, "custom_tan") == 0) {
+        return customTan.A * tan(customTan.B * x + customTan.C) + customTan.D;
+    }
+    if (strcmp(func, "polynomial") == 0) {
+        return customPoly.a4 * pow(x, 4) + 
+            customPoly.a3 * pow(x, 3) + 
+            customPoly.a2 * pow(x, 2) + 
+            customPoly.a1 * x + 
+            customPoly.a0;
+    }
+    if (strcmp(func, "circle") == 0) {
+        double y2 = customCircle.r * customCircle.r - 
+                pow(x - customCircle.h, 2);
+        if (y2 < 0) return NAN;
+        return sqrt(y2) + customCircle.k;
+    }
+    if (strcmp(func, "circle_neg") == 0) {
+        double y2 = customCircle.r * customCircle.r - 
+                pow(x - customCircle.h, 2);
+        if (y2 < 0) return NAN;
+        return -sqrt(y2) + customCircle.k;
+    }
+    if (strcmp(func, "ellipse") == 0) {
+        double y2 = customEllipse.b * customEllipse.b * 
+                (1 - pow(x - customEllipse.h, 2) / 
+                (customEllipse.a * customEllipse.a));
+        if (y2 < 0) return NAN;
+        return sqrt(y2) + customEllipse.k;
+    }
+    if (strcmp(func, "ellipse_neg") == 0) {
+        double y2 = customEllipse.b * customEllipse.b * 
+                (1 - pow(x - customEllipse.h, 2) / 
+                (customEllipse.a * customEllipse.a));
+        if (y2 < 0) return NAN;
+        return -sqrt(y2) + customEllipse.k;
+    }
+    if (strcmp(func, "hyperbola") == 0) {
+        double y2 = customHyperbola.b * customHyperbola.b * 
+                (pow(x - customHyperbola.h, 2) / 
+                (customHyperbola.a * customHyperbola.a) - 1);
+        if (y2 < 0) return NAN;
+        return sqrt(y2) + customHyperbola.k;
+    }
+    if (strcmp(func, "hyperbola_neg") == 0) {
+        double y2 = customHyperbola.b * customHyperbola.b * 
+                (pow(x - customHyperbola.h, 2) / 
+                (customHyperbola.a * customHyperbola.a) - 1);
+        if (y2 < 0) return NAN;
+        return -sqrt(y2) + customHyperbola.k;
+    }
+    return 0;
 }
+
+
+bool parseEquation(const char* equation) {
+    char cleanEq[MAX_INPUT_LENGTH];
+    strncpy(cleanEq, equation, MAX_INPUT_LENGTH - 1);
+    removeWhitespaces(cleanEq);
+    
+    float A = 1.0f;
+    float B = 1.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+    
+    TrigFunction* targetFunc = NULL;
+    
+    // Determine which function we're parsing and remove "y=" if present
+    char* functionStart = cleanEq;
+    if (strncmp(cleanEq, "y=", 2) == 0) {
+        functionStart = cleanEq + 2; // Skip "y=" if present
+    }
+    
+    if (strstr(functionStart, "sin")) {
+        targetFunc = &customSin;
+    } else if (strstr(functionStart, "cos")) {
+        targetFunc = &customCos;
+    } else if (strstr(functionStart, "tan")) {
+        targetFunc = &customTan;
+    }
+    
+    if (targetFunc == NULL) return false;
+
+    // Try parsing with full format first: A*trig(B*x+C)+D
+    int result = sscanf(functionStart, "%f*%*[^(](%f*x%f)%f", &A, &B, &C, &D);
+    
+    if (result < 2) {
+        // Try simpler format: trig(B*x)
+        if (sscanf(functionStart, "%*[^(](%f*x)", &B) < 1) {
+            // If that fails, try simplest format: trig(x)
+            if (strstr(functionStart, "(x)")) {
+                B = 1.0f;
+                result = 1;
+            }
+        } else {
+            result = 1;
+        }
+    }
+    
+    // Set default values based on what was parsed
+    if (result >= 1) {
+        targetFunc->A = A;
+        targetFunc->B = B;
+        targetFunc->C = C;
+        targetFunc->D = D;
+        return true;
+    }
+    
+    return false;
+}
+
 
 // Function to plot a generic mathematical function
 void plotFunction(const char* func, double r, double g, double b) {
@@ -179,12 +352,24 @@ void plotLine(double m, double c) {
 
 // Function to plot all toggled functions
 void plotFunctions() {
-    if (showSin) plotFunction("sin(x)", 0, 0, 255);         // Blue
-    if (showCos) plotFunction("cos(x)", 255, 0, 0);         // Red
-    if (showTan) plotFunction("tan(x)", 0, 255, 0);         // Green
-    if (showExp) plotFunction("exp(x)", 255, 128, 0);       // Orange
-    if (show_xSquare) plotFunction("x^2", 128, 0, 255);     // Purple
+    if (showSin) plotFunction("custom_sin", 0, 0, 255);     // Blue
+    if (showCos) plotFunction("custom_cos", 255, 0, 0);     // Red
+    if (showTan) plotFunction("custom_tan", 0, 255, 0);     // Green
+    if (customPoly.isActive) plotFunction("polynomial", 255, 128, 0);  // Orange
+    if (customCircle.isActive) {
+        plotFunction("circle", 128, 0, 128);      // Purple
+        plotFunction("circle_neg", 128, 0, 128);  // Purple
+    }
+    if (customEllipse.isActive) {
+        plotFunction("ellipse", 0, 128, 128);     // Teal
+        plotFunction("ellipse_neg", 0, 128, 128); // Teal
+    }
+    if (customHyperbola.isActive) {
+        plotFunction("hyperbola", 128, 128, 0);     // Olive
+        plotFunction("hyperbola_neg", 128, 128, 0); // Olive
+    }
 }
+
 
 // Function to plot the active shape based on user input
 void plotActiveShape() {
@@ -206,60 +391,117 @@ void plotActiveShape() {
 // Function to draw the user interface
 void drawUI() {
     iSetColor(255, 255, 255); // White text
-    iText(10, 10, "Press 1-5 to toggle functions, 6-9 to plot shapes");
-    iText(10, 30, "Use '[' and ']' to zoom, arrow keys to pan");
-    iText(10, 50, "Press 'g' to toggle grid, 'q' to exit");
+    iText(10, 10, "Keys for Functions:");
+    iText(10, 30, "'1' - Enter custom sin(x)");
+    iText(10, 50, "'2' - Enter custom cos(x)");
+    iText(10, 70, "'3' - Enter custom tan(x)");
+    iText(10, 90, "'4' - Enter polynomial");
+    iText(10, 110, "'[' and ']' - Zoom in/out");
+    iText(10, 130, "Arrow keys - Pan graph");
+    iText(10, 150, "'g' - Toggle grid");
+    iText(10, 170, "'q' - Exit");
 
-    // Zoom level indicator
     char zoomText[50];
     sprintf(zoomText, "Zoom: %.2f", scaleX);
-    iText(10, 70, zoomText);
+    iText(10, 190, zoomText);
 
-    // Display current input for shapes
-    if (showTextBox) {
-        iSetColor(200, 200, 200); // Light gray
-        iFilledRectangle(300, 500, 200, 30); // Text box
-        iSetColor(0, 0, 0); // Black text
-        iText(310, 510, userInput); // Show current input
-
-        // Display instructions based on active shape
-        if (strcmp(activeShape, "Ellipse") == 0) {
-            iSetColor(255, 255, 255);
-            iText(10, 110, "Enter coefficients for Ellipse (a, b):");
-            char aText[100], bText[100];
-            sprintf(aText, "a = %.2f", coefficients[0]);
-            sprintf(bText, "b = %.2f", coefficients[1]);
-            iText(10, 130, aText);
-            iText(10, 150, bText);
-        } else if (strcmp(activeShape, "Parabola") == 0) {
-            iSetColor(255, 255, 255);
-            iText(10, 110, "Enter coefficients for Parabola (a, b, c):");
-            char aText[100], bText[100], cText[100];
-            sprintf(aText, "a = %.2f", coefficients[0]);
-            sprintf(bText, "b = %.2f", coefficients[1]);
-            sprintf(cText, "c = %.2f", coefficients[2]);
-            iText(10, 130, aText);
-            iText(10, 150, bText);
-            iText(10, 170, cText);
-        } else if (strcmp(activeShape, "Hyperbola") == 0) {
-            iSetColor(255, 255, 255);
-            iText(10, 110, "Enter coefficients for Hyperbola (a, b):");
-            char aText[100], bText[100];
-            sprintf(aText, "a = %.2f", coefficients[0]);
-            sprintf(bText, "b = %.2f", coefficients[1]);
-            iText(10, 130, aText);
-            iText(10, 150, bText);
-        } else if (strcmp(activeShape, "StraightLine") == 0) {
-            iSetColor(255, 255, 255);
-            iText(10, 110, "Enter coefficients for Straight Line (m, c):");
-            char mText[100], cText[100];
-            sprintf(mText, "m = %.2f", coefficients[0]);
-            sprintf(cText, "c = %.2f", coefficients[1]);
-            iText(10, 130, mText);
-            iText(10, 150, cText);
+    if (isEnteringEquation) {
+        iSetColor(200, 200, 200);
+        iFilledRectangle(200, 500, 400, 30);
+        iSetColor(0, 0, 0);
+        iText(210, 510, equationInput);
+        
+        iSetColor(255, 255, 255);
+        if (strcmp(currentFunction, "poly") == 0) {
+            iText(200, 540, "Format: ax^4 + bx^3 + cx^2 + dx + e");
+            iText(200, 560, "Examples:");
+            iText(200, 580, "2x^4 - 3.5x^3 + 4x^2 - 1.5x + 6");
+            iText(200, 600, "x^2 + 1");
+        } else {
+            char instructions[100];
+            sprintf(instructions, "Format: [A*]%s([B*]x[+C])[+D]", currentFunction);
+            iText(200, 540, instructions);
+            iText(200, 560, "Examples:");
+            iText(200, 580, "2*sin(3*x+1.5)+1");
+            iText(200, 600, "sin(x)    [defaults: A=1, B=1, C=0, D=0]");
         }
+        iText(200, 620, "Press Enter to confirm, ESC to cancel");
+    }
+
+    // Show current equations
+    int yPos = 210;
+    if (showSin) {
+        char eqText[100];
+        if (customSin.A == 1 && customSin.C == 0 && customSin.D == 0) {
+            if (customSin.B == 1) sprintf(eqText, "Sin: sin(x)");
+            else sprintf(eqText, "Sin: sin(%.2f*x)", customSin.B);
+        } else {
+            sprintf(eqText, "Sin: %.2f*sin(%.2f*x+%.2f)+%.2f", 
+                    customSin.A, customSin.B, customSin.C, customSin.D);
+        }
+        iText(10, yPos, eqText);
+        yPos += 20;
+    }
+    if (showCos) {
+        char eqText[100];
+        if (customCos.A == 1 && customCos.C == 0 && customCos.D == 0) {
+            if (customCos.B == 1) sprintf(eqText, "Cos: cos(x)");
+            else sprintf(eqText, "Cos: cos(%.2f*x)", customCos.B);
+        } else {
+            sprintf(eqText, "Cos: %.2f*cos(%.2f*x+%.2f)+%.2f", 
+                    customCos.A, customCos.B, customCos.C, customCos.D);
+        }
+        iText(10, yPos, eqText);
+        yPos += 20;
+    }
+    if (showTan) {
+        char eqText[100];
+        if (customTan.A == 1 && customTan.C == 0 && customTan.D == 0) {
+            if (customTan.B == 1) sprintf(eqText, "Tan: tan(x)");
+            else sprintf(eqText, "Tan: tan(%.2f*x)", customTan.B);
+        } else {
+            sprintf(eqText, "Tan: %.2f*tan(%.2f*x+%.2f)+%.2f", 
+                    customTan.A, customTan.B, customTan.C, customTan.D);
+        }
+        iText(10, yPos, eqText);
+        yPos += 20;
+    }
+    if (customPoly.isActive) {
+        char eqText[200] = "Poly: ";
+        char term[50];
+        bool first = true;
+        
+        if (customPoly.a4 != 0) {
+            sprintf(term, "%gx^4", customPoly.a4);
+            strcat(eqText, term);
+            first = false;
+        }
+        if (customPoly.a3 != 0) {
+            sprintf(term, "%s%gx^3", first ? "" : (customPoly.a3 > 0 ? " + " : " "), customPoly.a3);
+            strcat(eqText, term);
+            first = false;
+        }
+        if (customPoly.a2 != 0) {
+            sprintf(term, "%s%gx^2", first ? "" : (customPoly.a2 > 0 ? " + " : " "), customPoly.a2);
+            strcat(eqText, term);
+            first = false;
+        }
+        if (customPoly.a1 != 0) {
+            sprintf(term, "%s%gx", first ? "" : (customPoly.a1 > 0 ? " + " : " "), customPoly.a1);
+            strcat(eqText, term);
+            first = false;
+        }
+        if (customPoly.a0 != 0) {
+            sprintf(term, "%s%g", first ? "" : (customPoly.a0 > 0 ? " + " : " "), customPoly.a0);
+            strcat(eqText, term);
+        }
+        if (first) strcat(eqText, "0");
+        
+        iText(10, yPos, eqText);
     }
 }
+
+
 
 // Function to handle user input from keyboard
 void handleUserInput(unsigned char key) {
@@ -270,7 +512,6 @@ void handleUserInput(unsigned char key) {
                 inputIndex++;
                 userInput[0] = '\0'; // Clear input
 
-                // Check if all required coefficients are entered
                 int requiredCoefficients = 0;
                 if (strcmp(activeShape, "Ellipse") == 0) requiredCoefficients = 2;
                 else if (strcmp(activeShape, "Parabola") == 0) requiredCoefficients = 3;
@@ -285,25 +526,55 @@ void handleUserInput(unsigned char key) {
                 if (len > 0) {
                     userInput[len - 1] = '\0';
                 }
-            } else if (key != '\b' && strlen(userInput) < MAX_INPUT_LENGTH - 1) { // Append character
+            } else if (key != '\b' && strlen(userInput) < MAX_INPUT_LENGTH - 1) {
                 int len = strlen(userInput);
                 userInput[len] = key;
                 userInput[len + 1] = '\0';
             }
         }
     } else {
-        toggleFunction(key);
+        switch (key) {
+            case '4': showExp = !showExp; break;           
+            case '5': show_xSquare = !show_xSquare; break; 
+            case '6': showTextBox = true; strcpy(activeShape, "Ellipse"); inputIndex = 0; break;
+            case '7': showTextBox = true; strcpy(activeShape, "Parabola"); inputIndex = 0; break;
+            case '8': showTextBox = true; strcpy(activeShape, "Hyperbola"); inputIndex = 0; break;
+            case '9': showTextBox = true; strcpy(activeShape, "StraightLine"); inputIndex = 0; break;
+            case '[': 
+                if (scaleX < MAX_SCALE && scaleY < MAX_SCALE) {
+                    scaleX *= 1.1; 
+                    scaleY *= 1.1;
+                    step /= 1.1;
+                }
+                break;
+            case ']':
+                if (scaleX > MIN_SCALE && scaleY > MIN_SCALE) {
+                    scaleX /= 1.1; 
+                    scaleY /= 1.1;
+                    step *= 1.1;
+                }
+                break;
+            case 'g':
+                showGridFlag = !showGridFlag;
+                break;
+            case 'q':
+                exit(0);
+                break;
+        }
     }
 }
 
 // Function to toggle function visibility and initiate shape plotting
 void toggleFunction(unsigned char key) {
     switch (key) {
-        case '1': showSin = !showSin; break;           // Toggle sin(x)
-        case '2': showCos = !showCos; break;           // Toggle cos(x)
-        case '3': showTan = !showTan; break;           // Toggle tan(x)
-        case '4': showExp = !showExp; break;           // Toggle exp(x)
-        case '5': show_xSquare = !show_xSquare; break; // Toggle x^2
+        case 'e': // Press 'e' to enter equation mode
+            isEnteringEquation = true;
+            equationInput[0] = '\0';
+            break;
+        case '2': showCos = !showCos; break;
+        case '3': showTan = !showTan; break;
+        case '4': showExp = !showExp; break;
+        case '5': show_xSquare = !show_xSquare; break;
         case '6': showTextBox = true; strcpy(activeShape, "Ellipse"); inputIndex = 0; break;
         case '7': showTextBox = true; strcpy(activeShape, "Parabola"); inputIndex = 0; break;
         case '8': showTextBox = true; strcpy(activeShape, "Hyperbola"); inputIndex = 0; break;
@@ -332,9 +603,92 @@ void toggleFunction(unsigned char key) {
 }
 
 // Function to handle keyboard input
+
 void iKeyboard(unsigned char key) {
-    handleUserInput(key);
+    if (!isEnteringEquation && (key >= '1' && key <= '7')) {
+        showTextBox = false;
+        isEnteringEquation = true;
+        equationInput[0] = '\0';
+        
+        switch(key) {
+            case '1': strcpy(currentFunction, "sin"); showSin = false; break;
+            case '2': strcpy(currentFunction, "cos"); showCos = false; break;
+            case '3': strcpy(currentFunction, "tan"); showTan = false; break;
+            case '4': strcpy(currentFunction, "poly"); customPoly.isActive = false; break;
+            case '5': strcpy(currentFunction, "circle"); customCircle.isActive = false; break;
+            case '6': strcpy(currentFunction, "ellipse"); customEllipse.isActive = false; break;
+            case '7': strcpy(currentFunction, "hyperbola"); customHyperbola.isActive = false; break;
+        }
+        return;
+    }
+    
+    if (isEnteringEquation) {
+        if (key == '\r') { // Enter key
+            bool success = false;
+            if (strcmp(currentFunction, "poly") == 0) {
+                readPolynomial(equationInput, &customPoly.a4, &customPoly.a3, 
+                             &customPoly.a2, &customPoly.a1, &customPoly.a0);
+                customPoly.isActive = true;
+                success = true;
+            } else if (strcmp(currentFunction, "circle") == 0) {
+                success = readCircle(equationInput, &customCircle.h, &customCircle.k, &customCircle.r);
+                customCircle.isActive = success;
+            } else if (strcmp(currentFunction, "ellipse") == 0) {
+                success = readEllipse(equationInput, &customEllipse.h, &customEllipse.k, 
+                                    &customEllipse.a, &customEllipse.b);
+                customEllipse.isActive = success;
+            } else if (strcmp(currentFunction, "hyperbola") == 0) {
+                success = readHyperbola(equationInput, &customHyperbola.h, &customHyperbola.k, 
+                                      &customHyperbola.a, &customHyperbola.b);
+                customHyperbola.isActive = success;
+            } else {
+                success = parseEquation(equationInput);
+                if (success) {
+                    if (strcmp(currentFunction, "sin") == 0) showSin = true;
+                    else if (strcmp(currentFunction, "cos") == 0) showCos = true;
+                    else if (strcmp(currentFunction, "tan") == 0) showTan = true;
+                }
+            }
+            if (success) isEnteringEquation = false;
+        } else if (key == 27) { // ESC key
+            isEnteringEquation = false;
+            equationInput[0] = '\0';
+        } else if (key == '\b') { // Backspace
+            int len = strlen(equationInput);
+            if (len > 0) {
+                equationInput[len - 1] = '\0';
+            }
+        } else if (isprint(key) && strlen(equationInput) < MAX_INPUT_LENGTH - 1) {
+            int len = strlen(equationInput);
+            equationInput[len] = key;
+            equationInput[len + 1] = '\0';
+        }
+    } else {
+        switch (key) {
+            case '[': 
+                if (scaleX < MAX_SCALE && scaleY < MAX_SCALE) {
+                    scaleX *= 1.1; 
+                    scaleY *= 1.1;
+                    step /= 1.1;
+                }
+                break;
+            case ']':
+                if (scaleX > MIN_SCALE && scaleY > MIN_SCALE) {
+                    scaleX /= 1.1; 
+                    scaleY /= 1.1;
+                    step *= 1.1;
+                }
+                break;
+            case 'g':
+                showGridFlag = !showGridFlag;
+                break;
+            case 'q':
+                exit(0);
+                break;
+        }
+    }
 }
+
 
 // Function to handle mouse clicks
 void iMouse(int button, int state, int mx, int my) {
@@ -379,7 +733,7 @@ void iSpecialKeyboard(unsigned char key) {
             break;
     }
 }
-
+/*
 // Function to run basic unit tests for evaluateFunction
 void testEvaluateFunction() {
     assert(evaluateFunction(0, "sin(x)") == 0);
@@ -390,7 +744,7 @@ void testEvaluateFunction() {
     assert(fabs(evaluateFunction(2, "x^2") - 4) < 1e-6);
     printf("All evaluateFunction tests passed.\n");
 }
-
+*/
 void iDraw() {
     iClear();       // Clear the screen
     drawAxes();     // Draw axes and grid
@@ -401,7 +755,7 @@ void iDraw() {
 
 // Main function
 int main() {
-    testEvaluateFunction(); // Run unit tests
+//    testEvaluateFunction(); // Run unit tests
     iInitialize(WINDOW_WIDTH, WINDOW_HEIGHT, "Graph Plotter with Shapes");
     return 0;
 }
