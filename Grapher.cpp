@@ -16,8 +16,13 @@
 #define MAIN_AXIS_COLOR_R 255
 #define MAIN_AXIS_COLOR_G 255
 #define MAIN_AXIS_COLOR_B 255
-#define MINOR_GRID_SPACING 50
-#define MAJOR_GRID_SPACING 100
+#define MINOR_GRID_SPACING 5
+#define MAJOR_GRID_SPACING 10
+
+#define MAIN_AXIS_THICKNESS 2.0     // Thickness for main axes
+#define AXIS_LABEL_SPACING 5.0      // Space between axis labels (5 units)
+#define LABEL_OFFSET 15             // Pixel offset for labels from axis
+#define TICK_SIZE 5                 // Size of tick marks in pixels
 
 // Constants for input handling
 #define MAX_INPUT_LENGTH 100
@@ -25,8 +30,8 @@
 #define MAX_SHAPE_NAME 20
 
 // Constants for scaling
-#define INITIAL_SCALE_X 50
-#define INITIAL_SCALE_Y 50
+#define INITIAL_SCALE_X 25
+#define INITIAL_SCALE_Y 25
 #define STEP_INITIAL 0.001
 #define MIN_SCALE 5
 #define MAX_SCALE 1000
@@ -80,10 +85,10 @@ double coefficients[MAX_COEFFICIENTS] = {0};
 
 // Structure definitions
 typedef struct {
-    double A; // Amplitude
-    double B; // Frequency
-    double C; // Phase shift
-    double D; // Vertical shift
+    float A; // Amplitude
+    float B; // Frequency
+    float C; // Phase shift
+    float D; // Vertical shift
 } TrigFunction;
 
 typedef struct {
@@ -451,41 +456,84 @@ int readHyperbola(const char *equation, float *h, float *k, float *a, float *b) 
 }
 
 void drawGrid(double minorSpacing, double majorSpacing) {
-    if (!showGridFlag) return;
-
-    iSetColor(GRID_COLOR_R, GRID_COLOR_G, GRID_COLOR_B);
-
     double startX = -offsetX - (WINDOW_WIDTH / 2) / scaleX;
     double endX = -offsetX + (WINDOW_WIDTH / 2) / scaleX;
     double startY = -offsetY - (WINDOW_HEIGHT / 2) / scaleY;
     double endY = -offsetY + (WINDOW_HEIGHT / 2) / scaleY;
-
-    // Draw vertical grid lines
-    for (double x = floor(startX / minorSpacing) * minorSpacing; x <= endX; x += minorSpacing) {
-        double screenX = WINDOW_WIDTH / 2 + (x + offsetX) * scaleX;
-        iLine(screenX, 0, screenX, WINDOW_HEIGHT);
-    }
-
-    // Draw horizontal grid lines
-    for (double y = floor(startY / minorSpacing) * minorSpacing; y <= endY; y += minorSpacing) {
-        double screenY = WINDOW_HEIGHT / 2 + (y + offsetY) * scaleY;
-        iLine(0, screenY, WINDOW_WIDTH, screenY);
-    }
-
-    // Draw main axes
-    iSetColor(MAIN_AXIS_COLOR_R, MAIN_AXIS_COLOR_G, MAIN_AXIS_COLOR_B);
+    
+    // Get axis positions
     double axisX = WINDOW_WIDTH / 2 + offsetX * scaleX;
     double axisY = WINDOW_HEIGHT / 2 + offsetY * scaleY;
-    iLine(0, axisY, WINDOW_WIDTH, axisY); // X-axis
-    iLine(axisX, 0, axisX, WINDOW_HEIGHT);  // Y-axis
 
-    // Draw axis labels
-    iSetColor(255, 255, 255);
-    char label[50];
-    sprintf(label, "X");
-    iText(WINDOW_WIDTH - 20, axisY + 5, label);
-    sprintf(label, "Y");
-    iText(axisX + 5, WINDOW_HEIGHT - 20, label);
+    // Draw minor grid lines if grid is enabled
+    if (showGridFlag) {
+        iSetColor(GRID_COLOR_R, GRID_COLOR_G, GRID_COLOR_B);
+        
+        // Draw vertical grid lines every 5 units
+        for (double x = floor(startX / AXIS_LABEL_SPACING) * AXIS_LABEL_SPACING; x <= endX; x += AXIS_LABEL_SPACING) {
+            if (fabs(x) > 1e-10) {  // Skip the main axis line
+                double screenX = WINDOW_WIDTH / 2 + (x + offsetX) * scaleX;
+                iLine(screenX, 0, screenX, WINDOW_HEIGHT);
+            }
+        }
+
+        // Draw horizontal grid lines every 5 units
+        for (double y = floor(startY / AXIS_LABEL_SPACING) * AXIS_LABEL_SPACING; y <= endY; y += AXIS_LABEL_SPACING) {
+            if (fabs(y) > 1e-10) {  // Skip the main axis line
+                double screenY = WINDOW_HEIGHT / 2 + (y + offsetY) * scaleY;
+                iLine(0, screenY, WINDOW_WIDTH, screenY);
+            }
+        }
+    }
+
+    // Always draw main axes with increased thickness
+    iSetColor(MAIN_AXIS_COLOR_R, MAIN_AXIS_COLOR_G, MAIN_AXIS_COLOR_B);
+    
+    // Draw thick X-axis
+    for (int i = 0; i < MAIN_AXIS_THICKNESS; i++) {
+        iLine(0, axisY + i - MAIN_AXIS_THICKNESS/2, WINDOW_WIDTH, axisY + i - MAIN_AXIS_THICKNESS/2);
+    }
+
+    // Draw thick Y-axis
+    for (int i = 0; i < MAIN_AXIS_THICKNESS; i++) {
+        iLine(axisX + i - MAIN_AXIS_THICKNESS/2, 0, axisX + i - MAIN_AXIS_THICKNESS/2, WINDOW_HEIGHT);
+    }
+
+    // Always draw coordinate labels and tick marks
+    iSetColor(255, 255, 255);  // White color for labels
+
+    // X-axis labels and ticks
+    for (double x = floor(startX / AXIS_LABEL_SPACING) * AXIS_LABEL_SPACING; x <= endX; x += AXIS_LABEL_SPACING) {
+        if (fabs(x) > 1e-10) {  // Skip 0 to avoid overlapping labels
+            double screenX = WINDOW_WIDTH / 2 + (x + offsetX) * scaleX;
+            
+            // Draw tick marks
+            iLine(screenX, axisY - TICK_SIZE/2, screenX, axisY + TICK_SIZE/2);
+            
+            // Draw coordinate labels
+            char label[20];
+            sprintf(label, "%.0f", x);
+            iText(screenX - strlen(label) * 3, axisY - LABEL_OFFSET, label);
+        }
+    }
+
+    // Y-axis labels and ticks
+    for (double y = floor(startY / AXIS_LABEL_SPACING) * AXIS_LABEL_SPACING; y <= endY; y += AXIS_LABEL_SPACING) {
+        if (fabs(y) > 1e-10) {  // Skip 0 to avoid overlapping labels
+            double screenY = WINDOW_HEIGHT / 2 + (y + offsetY) * scaleY;
+            
+            // Draw tick marks
+            iLine(axisX - TICK_SIZE/2, screenY, axisX + TICK_SIZE/2, screenY);
+            
+            // Draw coordinate labels
+            char label[20];
+            sprintf(label, "%.0f", y);
+            iText(axisX + LABEL_OFFSET, screenY - 5, label);
+        }
+    }
+
+    // Draw origin label (0)
+    iText(axisX + LABEL_OFFSET, axisY - LABEL_OFFSET, "0");
 }
 
 void drawAxes() {
@@ -691,7 +739,52 @@ void drawUI() {
         char instructions[200];
         sprintf(instructions, "Enter equation for %s function and press Enter.", currentFunction);
         iText(200, 540, instructions);
+
+        // Display Example Input
+        iSetColor(150, 150, 150); // Light gray for example text
+        char exampleInput[100] = "";
+
+        if (strcmp(currentFunction, "sin") == 0) {
+            strcpy(exampleInput, "Example: y = 2*sin(1.5*x + 0.5) + 1");
+        }
+        else if (strcmp(currentFunction, "cos") == 0) {
+            strcpy(exampleInput, "Example: y = 3*cos(2*x - 1) + 0");
+        }
+        else if (strcmp(currentFunction, "tan") == 0) {
+            strcpy(exampleInput, "Example: y = 1*tan(1*x + 0) + 0");
+        }
+        else if (strcmp(currentFunction, "poly") == 0) {
+            strcpy(exampleInput, "Example: y = 2*x^4 - 3*x^3 + x^2 + 5*x - 6");
+        }
+        else if (strcmp(currentFunction, "circle") == 0) {
+            strcpy(exampleInput, "Example: (x - 0)^2 + (y - 0)^2 = 5^2");
+        }
+        else if (strcmp(currentFunction, "ellipse") == 0) {
+            strcpy(exampleInput, "Example: ((x - 0)^2)/9 + ((y - 0)^2)/4 = 1");
+        }
+        else if (strcmp(currentFunction, "parabola") == 0) {
+            strcpy(exampleInput, "Example: y = 1*x^2 + 0*x + 0");
+        }
+        else if (strcmp(currentFunction, "hyperbola") == 0) {
+            strcpy(exampleInput, "Example: ((x - 0)^2)/16 - ((y - 0)^2)/9 = 1");
+        }
+        else if (strcmp(currentFunction, "exp") == 0) {
+            strcpy(exampleInput, "Example: y = 1*exp(1*x + 0) + 0");
+        }
+        else if (strcmp(currentFunction, "log") == 0) {
+            strcpy(exampleInput, "Example: y = 1*log(1*x + 1) + 0");
+        }
+        else if (strcmp(currentFunction, "ln") == 0) {
+            strcpy(exampleInput, "Example: y = 1*ln(1*x + 1) + 0");
+        }
+        else if (strcmp(currentFunction, "inverse_trig") == 0) {
+            strcpy(exampleInput, "Example: y = 1*arcsin(1*x + 0) + 0");
+        }
+
+        // Display the example input below the instructions
+        iText(200, 520, exampleInput);
     }
+
 
     // Show current equations
     int yPos = 220;
