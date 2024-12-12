@@ -35,8 +35,13 @@
 void removeWhitespaces(char *str);
 float parseNumber(char **ptr);
 int readPolynomial(const char* equation, float *a4, float *a3, float *a2, float *a1, float *a0);
+int readTrigFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType);
+int readInverseTrigFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType);
+int readExponentialFunction(const char* equation, float *A, float *B, float *C, float *D);
+int readLogFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType);
 int readCircle(const char *equation, float *h, float *k, float *r);
 int readEllipse(const char *equation, float *h, float *k, float *a, float *b);
+int readParabola(const char *equation, float *a, float *b, float *c);
 int readHyperbola(const char *equation, float *h, float *k, float *a, float *b);
 
 // Global Variables
@@ -47,15 +52,25 @@ double offsetX = 0, offsetY = 0;
 bool showSin = false;
 bool showCos = false;
 bool showTan = false;
+bool showASin = false;
+bool showACos = false;
+bool showATan = false;
 bool showExp = false;
-bool show_xSquare = false;
+bool showLog = false;
+bool showLn = false;
+bool showPoly = false;
+bool showCircle = false;
+bool showEllipse = false;
+bool showParabola = false;
+bool showHyperbola = false;
+
 bool showGridFlag = true;
 bool isEnteringEquation = false;
 bool isPanning = false;
 
 char userInput[MAX_INPUT_LENGTH] = "";
 char equationInput[MAX_INPUT_LENGTH] = "";
-char currentFunction[10] = "";
+char currentFunction[20] = "";
 char activeShape[MAX_SHAPE_NAME] = "";
 
 int inputIndex = 0;
@@ -65,10 +80,10 @@ double coefficients[MAX_COEFFICIENTS] = {0};
 
 // Structure definitions
 typedef struct {
-    double A; // Amplitude
-    double B; // Frequency
-    double C; // Phase shift
-    double D; // Vertical shift
+    float A; // Amplitude
+    float B; // Frequency
+    float C; // Phase shift
+    float D; // Vertical shift
 } TrigFunction;
 
 typedef struct {
@@ -78,27 +93,44 @@ typedef struct {
 
 typedef struct {
     float h, k, r;  // center (h,k) and radius r
-    bool isActive;
 } Circle;
 
 typedef struct {
     float h, k, a, b;  // center (h,k) and semi-major/minor axes a,b
-    bool isActive;
-} Ellipses;
+} Ellipses;   // Ellipse to Ellipses because of compaitibily issue
+
+typedef struct {
+    float a, b, c;  // coefficients for y = ax^2 + bx + c
+} Parabola;
 
 typedef struct {
     float h, k, a, b;  // center (h,k) and semi-major/minor axes a,b
-    bool isActive;
 } Hyperbola;
 
 // Structure Instances
 TrigFunction customSin = {1.0, 1.0, 0.0, 0.0};
 TrigFunction customCos = {1.0, 1.0, 0.0, 0.0};
 TrigFunction customTan = {1.0, 1.0, 0.0, 0.0};
+TrigFunction customASin = {1.0, 1.0, 0.0, 0.0};
+TrigFunction customACos = {1.0, 1.0, 0.0, 0.0};
+TrigFunction customATan = {1.0, 1.0, 0.0, 0.0};
 Polynomial customPoly = {0, 0, 0, 0, 0, false};
-Circle customCircle = {0, 0, 0, false};
-Ellipses customEllipse = {0, 0, 0, 0, false};
-Hyperbola customHyperbola = {0, 0, 0, 0, false};
+Circle customCircle = {0, 0, 0};
+Ellipses customEllipse = {0, 0, 0, 0};
+Parabola customParabola = {0, 0, 0};
+Hyperbola customHyperbola = {0, 0, 0, 0};
+
+typedef struct {
+    float A, B, C, D; // For y = A * exp(B * x + C) + D
+} ExponentialFunction;
+
+typedef struct {
+    float A, B, C, D; // For y = A * log(B * x + C) + D
+} LogFunction;
+
+ExponentialFunction customExp = {1.0, 1.0, 0.0, 0.0};
+LogFunction customLog = {1.0, 1.0, 0.0, 0.0};
+LogFunction customLn = {1.0, 1.0, 0.0, 0.0};
 
 // Helper Functions
 void removeWhitespaces(char *str) {
@@ -212,24 +244,209 @@ int readPolynomial(const char* equation, float *a4, float *a3, float *a2, float 
     return 1; // Parsing successful
 }
 
-int readCircle(const char *equation, float *h, float *k, float *r) {
-    // Implement a robust parsing function here
-    // For brevity, we'll assume success in parsing and assign default values
-    *h = 0; *k = 0; *r = 5;
+int readTrigFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType) {
+    *A = 1.0f; *B = 1.0f; *C = 0.0f; *D = 0.0f;
+
+    char cleanEq[MAX_INPUT_LENGTH];
+    strncpy(cleanEq, equation, MAX_INPUT_LENGTH - 1);
+    removeWhitespaces(cleanEq);
+
+    char *funcPtr = strstr(cleanEq, funcType);
+    if (!funcPtr) return 0;
+
+    char *ptr = cleanEq;
+    if (strncmp(ptr, "y=", 2) == 0) ptr += 2;
+
+    if (ptr != funcPtr) {
+        char coeffStr[MAX_INPUT_LENGTH];
+        strncpy(coeffStr, funcPtr - ptr <= 0 ? ptr : ptr, funcPtr - ptr);
+        coeffStr[funcPtr - ptr] = '\0';
+        *A = atof(coeffStr);
+    }
+
+    ptr = funcPtr + strlen(funcType);
+
+    if (*ptr == '(') {
+        ptr++;
+    } else {
+        return 0;
+    }
+
+    char innerFunc[MAX_INPUT_LENGTH];
+    int idx = 0;
+
+    while (*ptr != ')' && *ptr != '\0') {
+        innerFunc[idx++] = *ptr++;
+    }
+    innerFunc[idx] = '\0';
+
+    // Parse B and C from inner function Bx + C
+    char *xPtr = strchr(innerFunc, 'x');
+    if (!xPtr) return 0;
+
+    if (xPtr != innerFunc) {
+        char coeffStr[MAX_INPUT_LENGTH];
+        strncpy(coeffStr, innerFunc, xPtr - innerFunc);
+        coeffStr[xPtr - innerFunc] = '\0';
+        *B = atof(coeffStr);
+    }
+
+    ptr = xPtr + 1;
+    if (*ptr == '+' || *ptr == '-') {
+        *C = atof(ptr);
+    }
+
+    ptr = strchr(ptr, ')');
+    if (ptr && *(ptr + 1) == '+') {
+        *D = atof(ptr + 2);
+    } else if (ptr && *(ptr + 1) == '-') {
+        *D = -atof(ptr + 2);
+    }
+
     return 1;
 }
 
+int readInverseTrigFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType) {
+    return readTrigFunction(equation, A, B, C, D, funcType);
+}
+
+int readExponentialFunction(const char* equation, float *A, float *B, float *C, float *D) {
+    *A = 1.0f; *B = 1.0f; *C = 0.0f; *D = 0.0f;
+    char cleanEq[MAX_INPUT_LENGTH];
+    strncpy(cleanEq, equation, MAX_INPUT_LENGTH - 1);
+    removeWhitespaces(cleanEq);
+
+    char *expPtr = strstr(cleanEq, "exp");
+    if (!expPtr) return 0;
+
+    char *ptr = cleanEq;
+    if (strncmp(ptr, "y=", 2) == 0) ptr += 2;
+
+    if (ptr != expPtr) {
+        char coeffStr[MAX_INPUT_LENGTH];
+        strncpy(coeffStr, ptr, expPtr - ptr);
+        coeffStr[expPtr - ptr] = '\0';
+        *A = atof(coeffStr);
+    }
+
+    ptr = expPtr + 3;
+
+    if (*ptr == '(') {
+        ptr++;
+    } else {
+        return 0;
+    }
+
+    char innerFunc[MAX_INPUT_LENGTH];
+    int idx = 0;
+
+    while (*ptr != ')' && *ptr != '\0') {
+        innerFunc[idx++] = *ptr++;
+    }
+    innerFunc[idx] = '\0';
+
+    // Parse B and C from inner function Bx + C
+    char *xPtr = strchr(innerFunc, 'x');
+    if (!xPtr) return 0;
+
+    if (xPtr != innerFunc) {
+        char coeffStr[MAX_INPUT_LENGTH];
+        strncpy(coeffStr, innerFunc, xPtr - innerFunc);
+        coeffStr[xPtr - innerFunc] = '\0';
+        *B = atof(coeffStr);
+    }
+
+    ptr = xPtr + 1;
+    if (*ptr == '+' || *ptr == '-') {
+        *C = atof(ptr);
+    }
+
+    ptr = strchr(ptr, ')');
+    if (ptr && *(ptr + 1) == '+') {
+        *D = atof(ptr + 2);
+    } else if (ptr && *(ptr + 1) == '-') {
+        *D = -atof(ptr + 2);
+    }
+
+    return 1;
+}
+
+int readLogFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType) {
+    return readExponentialFunction(equation, A, B, C, D);
+}
+
+int readCircle(const char *equation, float *h, float *k, float *r) {
+    char cleanEq[MAX_INPUT_LENGTH];
+    strcpy(cleanEq, equation);
+    removeWhitespaces(cleanEq);
+
+    // Expected format: (x - h)^2 + (y - k)^2 = r^2
+    char *ptr = cleanEq;
+
+    // Find substrings for (x - h)^2 and (y - k)^2
+    char *xPart = strstr(ptr, "(x");
+    char *yPart = strstr(ptr, "(y");
+    char *equalSign = strchr(ptr, '=');
+
+    if (!xPart || !yPart || !equalSign) return 0;
+
+    // Extract h
+    ptr = xPart + 2;
+    if (*ptr == '-') {
+        ptr++;
+        *h = atof(ptr);
+    } else if (*ptr == '+') {
+        ptr++;
+        *h = -atof(ptr);
+    } else {
+        *h = 0;
+    }
+
+    // Extract k
+    ptr = yPart + 2;
+    if (*ptr == '-') {
+        ptr++;
+        *k = atof(ptr);
+    } else if (*ptr == '+') {
+        ptr++;
+        *k = -atof(ptr);
+    } else {
+        *k = 0;
+    }
+
+    // Extract r
+    ptr = equalSign + 1;
+    *r = sqrt(atof(ptr));
+
+    return 1; // Parsing successful
+}
+
 int readEllipse(const char *equation, float *h, float *k, float *a, float *b) {
-    // Implement a robust parsing function here
-    // For brevity, we'll assume success in parsing and assign default values
-    *h = 0; *k = 0; *a = 5; *b = 3;
+    // For simplicity, assume ellipse is centered at (h, k) with equation:
+    // ((x - h)^2) / a^2 + ((y - k)^2) / b^2 = 1
+    *h = 0; *k = 0; *a = 5; *b = 3; // Default values
+    return 1;
+}
+
+int readParabola(const char *equation, float *a, float *b, float *c) {
+    // Expected format y = ax^2 + bx + c
+    *a = 1.0f; *b = 0.0f; *c = 0.0f;
+    char cleanEq[MAX_INPUT_LENGTH];
+    strcpy(cleanEq, equation);
+    removeWhitespaces(cleanEq);
+
+    char *ptr = cleanEq;
+    if (strncmp(ptr, "y=", 2) == 0) ptr += 2;
+
+    // For simplicity, assign default values
+    *a = 1.0f; *b = 0.0f; *c = 0.0f;
     return 1;
 }
 
 int readHyperbola(const char *equation, float *h, float *k, float *a, float *b) {
-    // Implement a robust parsing function here
-    // For brevity, we'll assume success in parsing and assign default values
-    *h = 0; *k = 0; *a = 5; *b = 3;
+    // For simplicity, assume hyperbola is centered at (h, k) with equation:
+    // ((x - h)^2) / a^2 - ((y - k)^2) / b^2 = 1
+    *h = 0; *k = 0; *a = 5; *b = 3; // Default values
     return 1;
 }
 
@@ -285,6 +502,24 @@ double evaluateFunction(double x, const char* func) {
     if (strcmp(func, "custom_tan") == 0) {
         return customTan.A * tan(customTan.B * x + customTan.C) + customTan.D;
     }
+    if (strcmp(func, "custom_asin") == 0) {
+        return customASin.A * asin(customASin.B * x + customASin.C) + customASin.D;
+    }
+    if (strcmp(func, "custom_acos") == 0) {
+        return customACos.A * acos(customACos.B * x + customACos.C) + customACos.D;
+    }
+    if (strcmp(func, "custom_atan") == 0) {
+        return customATan.A * atan(customATan.B * x + customATan.C) + customATan.D;
+    }
+    if (strcmp(func, "exponential") == 0) {
+        return customExp.A * exp(customExp.B * x + customExp.C) + customExp.D;
+    }
+    if (strcmp(func, "logarithm") == 0) {
+        return customLog.A * log10(customLog.B * x + customLog.C) + customLog.D;
+    }
+    if (strcmp(func, "natural_log") == 0) {
+        return customLn.A * log(customLn.B * x + customLn.C) + customLn.D;
+    }
     if (strcmp(func, "polynomial") == 0) {
         return customPoly.a4 * pow(x, 4) +
             customPoly.a3 * pow(x, 3) +
@@ -294,43 +529,6 @@ double evaluateFunction(double x, const char* func) {
     }
     // Other functions omitted for brevity
     return 0;
-}
-
-bool parseEquation(const char* equation) {
-    char cleanEq[MAX_INPUT_LENGTH];
-    strncpy(cleanEq, equation, MAX_INPUT_LENGTH - 1);
-    removeWhitespaces(cleanEq);
-
-    float A = 1.0f;
-    float B = 1.0f;
-    float C = 0.0f;
-    float D = 0.0f;
-
-    TrigFunction* targetFunc = NULL;
-
-    // Determine which function we're parsing and remove "y=" if present
-    char* functionStart = cleanEq;
-    if (strncmp(cleanEq, "y=", 2) == 0) {
-        functionStart = cleanEq + 2; // Skip "y=" if present
-    }
-
-    if (strstr(functionStart, "sin")) {
-        targetFunc = &customSin;
-    } else if (strstr(functionStart, "cos")) {
-        targetFunc = &customCos;
-    } else if (strstr(functionStart, "tan")) {
-        targetFunc = &customTan;
-    } else {
-        return false;
-    }
-
-    // Parse the equation
-    // For brevity, we'll assume successful parsing and assign default values
-    targetFunc->A = A;
-    targetFunc->B = B;
-    targetFunc->C = C;
-    targetFunc->D = D;
-    return true;
 }
 
 void plotFunction(const char* func, double r, double g, double b) {
@@ -361,12 +559,101 @@ void plotFunction(const char* func, double r, double g, double b) {
     }
 }
 
+void plotCircle() {
+    iSetColor(255, 0, 255); // Magenta
+    float h = customCircle.h;
+    float k = customCircle.k;
+    float r = customCircle.r;
+
+    iCircle(WINDOW_WIDTH / 2 + (h + offsetX) * scaleX, WINDOW_HEIGHT / 2 + (k + offsetY) * scaleY, r * scaleX);
+}
+
+void plotEllipse() {
+    iSetColor(0, 255, 255); // Cyan
+    float h = customEllipse.h;
+    float k = customEllipse.k;
+    float a = customEllipse.a;
+    float b = customEllipse.b;
+
+    iEllipse(WINDOW_WIDTH / 2 + (h + offsetX) * scaleX, WINDOW_HEIGHT / 2 + (k + offsetY) * scaleY, a * scaleX, b * scaleY);
+}
+
+void plotParabola() {
+    iSetColor(128, 0, 128); // Purple
+    double startX = -offsetX - (WINDOW_WIDTH / 2) / scaleX;
+    double endX = -offsetX + (WINDOW_WIDTH / 2) / scaleX;
+
+    for (double x = startX; x <= endX; x += step) {
+        double y1 = customParabola.a * x * x + customParabola.b * x + customParabola.c;
+        double y2 = customParabola.a * (x + step) * (x + step) + customParabola.b * (x + step) + customParabola.c;
+
+        if (!isfinite(y1) || !isfinite(y2)) {
+            continue;
+        }
+
+        double screenX1 = WINDOW_WIDTH / 2 + (x + offsetX) * scaleX;
+        double screenY1 = WINDOW_HEIGHT / 2 + (y1 + offsetY) * scaleY;
+        double screenX2 = WINDOW_WIDTH / 2 + (x + step + offsetX) * scaleX;
+        double screenY2 = WINDOW_HEIGHT / 2 + (y2 + offsetY) * scaleY;
+
+        if ((screenX1 < 0 || screenX1 > WINDOW_WIDTH) && (screenX2 < 0 || screenX2 > WINDOW_WIDTH)) continue;
+        if ((screenY1 < 0 || screenY1 > WINDOW_HEIGHT) && (screenY2 < 0 || screenY2 > WINDOW_HEIGHT)) continue;
+
+        iLine(screenX1, screenY1, screenX2, screenY2);
+    }
+}
+
+void plotHyperbola() {
+    iSetColor(255, 255, 0); // Yellow
+    float h = customHyperbola.h;
+    float k = customHyperbola.k;
+    float a = customHyperbola.a;
+    float b = customHyperbola.b;
+
+    double startX = -offsetX - (WINDOW_WIDTH / 2) / scaleX - h - 10;
+    double endX = -offsetX + (WINDOW_WIDTH / 2) / scaleX - h + 10;
+
+    for (double x = startX; x <= endX; x += step) {
+        double y1 = k + b * sqrt((x - h) * (x - h) / (a * a) - 1);
+        double y2 = k + b * sqrt(((x + step) - h) * ((x + step) - h) / (a * a) - 1);
+
+        double y3 = k - b * sqrt((x - h) * (x - h) / (a * a) - 1);
+        double y4 = k - b * sqrt(((x + step) - h) * ((x + step) - h) / (a * a) - 1);
+
+        if (isfinite(y1) && isfinite(y2)) {
+            double screenX1 = WINDOW_WIDTH / 2 + (x + offsetX) * scaleX;
+            double screenY1 = WINDOW_HEIGHT / 2 + (y1 + offsetY) * scaleY;
+            double screenX2 = WINDOW_WIDTH / 2 + (x + step + offsetX) * scaleX;
+            double screenY2 = WINDOW_HEIGHT / 2 + (y2 + offsetY) * scaleY;
+            iLine(screenX1, screenY1, screenX2, screenY2);
+        }
+
+        if (isfinite(y3) && isfinite(y4)) {
+            double screenX1 = WINDOW_WIDTH / 2 + (x + offsetX) * scaleX;
+            double screenY1 = WINDOW_HEIGHT / 2 + (y3 + offsetY) * scaleY;
+            double screenX2 = WINDOW_WIDTH / 2 + (x + step + offsetX) * scaleX;
+            double screenY2 = WINDOW_HEIGHT / 2 + (y4 + offsetY) * scaleY;
+            iLine(screenX1, screenY1, screenX2, screenY2);
+        }
+    }
+}
+
 void plotFunctions() {
     if (showSin) plotFunction("custom_sin", 0, 0, 255);     // Blue
     if (showCos) plotFunction("custom_cos", 255, 0, 0);     // Red
     if (showTan) plotFunction("custom_tan", 0, 255, 0);     // Green
-    if (customPoly.isActive) plotFunction("polynomial", 255, 128, 0);  // Orange
-    // Other shapes omitted for brevity
+    if (showASin) plotFunction("custom_asin", 255, 128, 128); // Light Red
+    if (showACos) plotFunction("custom_acos", 128, 128, 255); // Light Blue
+    if (showATan) plotFunction("custom_atan", 128, 255, 128); // Light Green
+    if (showExp) plotFunction("exponential", 255, 165, 0);    // Orange
+    if (showLog) plotFunction("logarithm", 255, 20, 147);     // Deep Pink
+    if (showLn) plotFunction("natural_log", 75, 0, 130);      // Indigo
+    if (showPoly) plotFunction("polynomial", 255, 128, 0);  // Orange
+
+    if (showCircle) plotCircle();
+    if (showEllipse) plotEllipse();
+    if (showParabola) plotParabola();
+    if (showHyperbola) plotHyperbola();
 }
 
 void drawUI() {
@@ -376,14 +663,23 @@ void drawUI() {
     iText(10, 540, "'2' - Enter custom cos(x)");
     iText(10, 520, "'3' - Enter custom tan(x)");
     iText(10, 500, "'4' - Enter polynomial");
-    iText(10, 480, "'[' and ']' - Zoom in/out");
-    iText(10, 460, "Arrow keys - Pan graph");
-    iText(10, 440, "'g' - Toggle grid");
-    iText(10, 420, "'q' - Exit");
+    iText(10, 480, "'5' - Enter circle");
+    iText(10, 460, "'6' - Enter ellipse");
+    iText(10, 440, "'7' - Enter parabola");
+    iText(10, 420, "'8' - Enter hyperbola");
+    iText(10, 400, "'9' - Enter exponential");
+    iText(10, 380, "'0' - Enter logarithm");
+    iText(10, 360, "'-' - Enter natural log");
+    iText(10, 340, "'=' - Enter inverse trig");
+
+    iText(10, 320, "'[' and ']' - Zoom in/out");
+    iText(10, 300, "Arrow keys - Pan graph");
+    iText(10, 280, "'g' - Toggle grid");
+    iText(10, 260, "'q' - Exit");
 
     char zoomText[50];
     sprintf(zoomText, "Zoom: %.2f", scaleX);
-    iText(10, 400, zoomText);
+    iText(10, 240, zoomText);
 
     if (isEnteringEquation) {
         iSetColor(200, 200, 200);
@@ -392,13 +688,58 @@ void drawUI() {
         iText(210, 510, equationInput);
 
         iSetColor(255, 255, 255);
-        char instructions[100];
+        char instructions[200];
         sprintf(instructions, "Enter equation for %s function and press Enter.", currentFunction);
         iText(200, 540, instructions);
+
+        // Display Example Input
+        iSetColor(150, 150, 150); // Light gray for example text
+        char exampleInput[100] = "";
+
+        if (strcmp(currentFunction, "sin") == 0) {
+            strcpy(exampleInput, "Example: y = 2*sin(1.5*x + 0.5) + 1");
+        }
+        else if (strcmp(currentFunction, "cos") == 0) {
+            strcpy(exampleInput, "Example: y = 3*cos(2*x - 1) + 0");
+        }
+        else if (strcmp(currentFunction, "tan") == 0) {
+            strcpy(exampleInput, "Example: y = 1*tan(1*x + 0) + 0");
+        }
+        else if (strcmp(currentFunction, "poly") == 0) {
+            strcpy(exampleInput, "Example: y = 2*x^4 - 3*x^3 + x^2 + 5*x - 6");
+        }
+        else if (strcmp(currentFunction, "circle") == 0) {
+            strcpy(exampleInput, "Example: (x - 0)^2 + (y - 0)^2 = 5^2");
+        }
+        else if (strcmp(currentFunction, "ellipse") == 0) {
+            strcpy(exampleInput, "Example: ((x - 0)^2)/9 + ((y - 0)^2)/4 = 1");
+        }
+        else if (strcmp(currentFunction, "parabola") == 0) {
+            strcpy(exampleInput, "Example: y = 1*x^2 + 0*x + 0");
+        }
+        else if (strcmp(currentFunction, "hyperbola") == 0) {
+            strcpy(exampleInput, "Example: ((x - 0)^2)/16 - ((y - 0)^2)/9 = 1");
+        }
+        else if (strcmp(currentFunction, "exp") == 0) {
+            strcpy(exampleInput, "Example: y = 1*exp(1*x + 0) + 0");
+        }
+        else if (strcmp(currentFunction, "log") == 0) {
+            strcpy(exampleInput, "Example: y = 1*log(1*x + 1) + 0");
+        }
+        else if (strcmp(currentFunction, "ln") == 0) {
+            strcpy(exampleInput, "Example: y = 1*ln(1*x + 1) + 0");
+        }
+        else if (strcmp(currentFunction, "inverse_trig") == 0) {
+            strcpy(exampleInput, "Example: y = 1*arcsin(1*x + 0) + 0");
+        }
+
+        // Display the example input below the instructions
+        iText(200, 520, exampleInput);
     }
 
+
     // Show current equations
-    int yPos = 370;
+    int yPos = 220;
     if (showSin) {
         char eqText[100];
         sprintf(eqText, "Sin: y = %.2f*sin(%.2f*x + %.2f) + %.2f", customSin.A, customSin.B, customSin.C, customSin.D);
@@ -417,16 +758,76 @@ void drawUI() {
         iText(10, yPos, eqText);
         yPos -= 20;
     }
-    if (customPoly.isActive) {
+    if (showASin) {
+        char eqText[100];
+        sprintf(eqText, "Arcsin: y = %.2f*arcsin(%.2f*x + %.2f) + %.2f", customASin.A, customASin.B, customASin.C, customASin.D);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showACos) {
+        char eqText[100];
+        sprintf(eqText, "Arccos: y = %.2f*arccos(%.2f*x + %.2f) + %.2f", customACos.A, customACos.B, customACos.C, customACos.D);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showATan) {
+        char eqText[100];
+        sprintf(eqText, "Arctan: y = %.2f*arctan(%.2f*x + %.2f) + %.2f", customATan.A, customATan.B, customATan.C, customATan.D);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showExp) {
+        char eqText[100];
+        sprintf(eqText, "Exp: y = %.2f*exp(%.2f*x + %.2f) + %.2f", customExp.A, customExp.B, customExp.C, customExp.D);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showLog) {
+        char eqText[100];
+        sprintf(eqText, "Log: y = %.2f*log(%.2f*x + %.2f) + %.2f", customLog.A, customLog.B, customLog.C, customLog.D);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showLn) {
+        char eqText[100];
+        sprintf(eqText, "Ln: y = %.2f*ln(%.2f*x + %.2f) + %.2f", customLn.A, customLn.B, customLn.C, customLn.D);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showPoly) {
         char eqText[200];
         sprintf(eqText, "Poly: y = %.2fx^4 + %.2fx^3 + %.2fx^2 + %.2fx + %.2f",
             customPoly.a4, customPoly.a3, customPoly.a2, customPoly.a1, customPoly.a0);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showCircle) {
+        char eqText[100];
+        sprintf(eqText, "Circle: (x - %.2f)^2 + (y - %.2f)^2 = %.2f^2", customCircle.h, customCircle.k, customCircle.r);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showEllipse) {
+        char eqText[100];
+        sprintf(eqText, "Ellipses: ((x - %.2f)^2)/%.2f^2 + ((y - %.2f)^2)/%.2f^2 = 1", customEllipse.h, customEllipse.a, customEllipse.k, customEllipse.b);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showParabola) {
+        char eqText[100];
+        sprintf(eqText, "Parabola: y = %.2fx^2 + %.2fx + %.2f", customParabola.a, customParabola.b, customParabola.c);
+        iText(10, yPos, eqText);
+        yPos -= 20;
+    }
+    if (showHyperbola) {
+        char eqText[100];
+        sprintf(eqText, "Hyperbola: ((x - %.2f)^2)/%.2f^2 - ((y - %.2f)^2)/%.2f^2 = 1", customHyperbola.h, customHyperbola.a, customHyperbola.k, customHyperbola.b);
         iText(10, yPos, eqText);
     }
 }
 
 void iKeyboard(unsigned char key) {
-    if (!isEnteringEquation && (key >= '1' && key <= '4')) {
+    if (!isEnteringEquation && (key >= '0' && key <= '9' || key == '-' || key == '=')) {
         isEnteringEquation = true;
         equationInput[0] = '\0';
 
@@ -434,7 +835,15 @@ void iKeyboard(unsigned char key) {
         case '1': strcpy(currentFunction, "sin"); showSin = false; break;
         case '2': strcpy(currentFunction, "cos"); showCos = false; break;
         case '3': strcpy(currentFunction, "tan"); showTan = false; break;
-        case '4': strcpy(currentFunction, "poly"); customPoly.isActive = false; break;
+        case '4': strcpy(currentFunction, "poly"); showPoly = false; break;
+        case '5': strcpy(currentFunction, "circle"); showCircle = false; break;
+        case '6': strcpy(currentFunction, "ellipse"); showEllipse = false; break;
+        case '7': strcpy(currentFunction, "parabola"); showParabola = false; break;
+        case '8': strcpy(currentFunction, "hyperbola"); showHyperbola = false; break;
+        case '9': strcpy(currentFunction, "exp"); showExp = false; break;
+        case '0': strcpy(currentFunction, "log"); showLog = false; break;
+        case '-': strcpy(currentFunction, "ln"); showLn = false; break;
+        case '=': strcpy(currentFunction, "inverse_trig"); break;
         default: break;
         }
         return;
@@ -445,15 +854,44 @@ void iKeyboard(unsigned char key) {
             bool success = false;
             if (strcmp(currentFunction, "poly") == 0) {
                 success = readPolynomial(equationInput, &customPoly.a4, &customPoly.a3, &customPoly.a2, &customPoly.a1, &customPoly.a0);
-                if (success) customPoly.isActive = true;
-            } else {
-                success = parseEquation(equationInput);
-                if (success) {
-                    if (strcmp(currentFunction, "sin") == 0) showSin = true;
-                    else if (strcmp(currentFunction, "cos") == 0) showCos = true;
-                    else if (strcmp(currentFunction, "tan") == 0) showTan = true;
-                }
+                if (success) showPoly = true;
+            } else if (strcmp(currentFunction, "sin") == 0) {
+                success = readTrigFunction(equationInput, &customSin.A, &customSin.B, &customSin.C, &customSin.D, "sin");
+                if (success) showSin = true;
+            } else if (strcmp(currentFunction, "cos") == 0) {
+                success = readTrigFunction(equationInput, &customCos.A, &customCos.B, &customCos.C, &customCos.D, "cos");
+                if (success) showCos = true;
+            } else if (strcmp(currentFunction, "tan") == 0) {
+                success = readTrigFunction(equationInput, &customTan.A, &customTan.B, &customTan.C, &customTan.D, "tan");
+                if (success) showTan = true;
+            } else if (strcmp(currentFunction, "circle") == 0) {
+                success = readCircle(equationInput, &customCircle.h, &customCircle.k, &customCircle.r);
+                if (success) showCircle = true;
+            } else if (strcmp(currentFunction, "ellipse") == 0) {
+                success = readEllipse(equationInput, &customEllipse.h, &customEllipse.k, &customEllipse.a, &customEllipse.b);
+                if (success) showEllipse = true;
+            } else if (strcmp(currentFunction, "parabola") == 0) {
+                success = readParabola(equationInput, &customParabola.a, &customParabola.b, &customParabola.c);
+                if (success) showParabola = true;
+            } else if (strcmp(currentFunction, "hyperbola") == 0) {
+                success = readHyperbola(equationInput, &customHyperbola.h, &customHyperbola.k, &customHyperbola.a, &customHyperbola.b);
+                if (success) showHyperbola = true;
+            } else if (strcmp(currentFunction, "exp") == 0) {
+                success = readExponentialFunction(equationInput, &customExp.A, &customExp.B, &customExp.C, &customExp.D);
+                if (success) showExp = true;
+            } else if (strcmp(currentFunction, "log") == 0) {
+                success = readLogFunction(equationInput, &customLog.A, &customLog.B, &customLog.C, &customLog.D, "log");
+                if (success) showLog = true;
+            } else if (strcmp(currentFunction, "ln") == 0) {
+                success = readLogFunction(equationInput, &customLn.A, &customLn.B, &customLn.C, &customLn.D, "ln");
+                if (success) showLn = true;
+            } else if (strcmp(currentFunction, "inverse_trig") == 0) {
+                // Prompt user to specify which inverse trig function
+                // For simplicity, let's assume it's arcsin
+                success = readInverseTrigFunction(equationInput, &customASin.A, &customASin.B, &customASin.C, &customASin.D, "arcsin");
+                if (success) showASin = true;
             }
+
             if (success) {
                 isEnteringEquation = false;
             } else {
@@ -548,6 +986,6 @@ void iDraw() {
 
 // Main function
 int main() {
-    iInitialize(WINDOW_WIDTH, WINDOW_HEIGHT, "Graph Plotter with Improved Functionality");
+    iInitialize(WINDOW_WIDTH, WINDOW_HEIGHT, "Graph Plotter with Enhanced Functionality");
     return 0;
 }
