@@ -31,33 +31,14 @@
 #define MIN_SCALE 5
 #define MAX_SCALE 100
 
-// Structure Definitions
-struct TrigFunction {
-    double A; // Amplitude
-    double B; // Frequency
-    double C; // Phase shift
-    double D; // Vertical shift
-};
 
-struct Polynomial {
-    float a4, a3, a2, a1, a0;  // coefficients
-    bool isActive;
-};
-
-struct Circle {
-    float h, k, r;  // center (h,k) and radius r
-    bool isActive;
-};
-
-struct Ellipse {
-    float h, k, a, b;  // center (h,k) and semi-major/minor axes a,b
-    bool isActive;
-};
-
-struct Hyperbola {
-    float h, k, a, b;  // center (h,k) and semi-major/minor axes a,b
-    bool isActive;
-};
+// Function declarations (prototypes)
+void removeWhitespaces(char *str);
+float parseNumber(char **ptr);
+void readPolynomial(const char* equation, float *a4, float *a3, float *a2, float *a1, float *a0);
+int readCircle(const char *equation, float *h, float *k, float *r);
+int readEllipse(const char *equation, float *h, float *k, float *a, float *b);
+int readHyperbola(const char *equation, float *h, float *k, float *a, float *b);
 
 // Global Variables
 double scaleX = INITIAL_SCALE_X, scaleY = INITIAL_SCALE_Y;
@@ -84,13 +65,43 @@ int lastMouseX, lastMouseY;
 
 double coefficients[MAX_COEFFICIENTS] = {0};
 
+// Complete structure definitions
+// all typedefs for the structures
+typedef struct {
+    double A; // Amplitude
+    double B; // Frequency
+    double C; // Phase shift
+    double D; // Vertical shift
+} TrigFunction;
+
+typedef struct {
+    float a4, a3, a2, a1, a0;  // coefficients
+    bool isActive;
+} Polynomial;
+
+typedef struct {
+    float h, k, r;  // center (h,k) and radius r
+    bool isActive;
+} Circle;
+
+typedef struct {
+    float h, k, a, b;  // center (h,k) and semi-major/minor axes a,b
+    bool isActive;
+} Ellipses;
+
+typedef struct {
+    float h, k, a, b;  // center (h,k) and semi-major/minor axes a,b
+    bool isActive;
+} Hyperbola;
+
+
 // Structure Instances
 TrigFunction customSin = {1.0, 1.0, 0.0, 0.0};
 TrigFunction customCos = {1.0, 1.0, 0.0, 0.0};
 TrigFunction customTan = {1.0, 1.0, 0.0, 0.0};
 Polynomial customPoly = {0, 0, 0, 0, 0, false};
 Circle customCircle = {0, 0, 0, false};
-Ellipse customEllipse = {0, 0, 0, 0, false};
+Ellipses customEllipse = {0, 0, 0, 0, false};
 Hyperbola customHyperbola = {0, 0, 0, 0, false};
 
 // Helper Functions
