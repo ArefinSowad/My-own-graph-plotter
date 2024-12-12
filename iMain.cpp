@@ -7,37 +7,51 @@
 // Window dimensions
 int windowWidth = 800, windowHeight = 600;
 
+
 // Graph scaling and offsets
 double scaleX = 50, scaleY = 50;
 double step = 0.0001;
+double minScale = 5, maxScale = 100;
 
-// User input handling
+// User input handling preparation
 bool showTextBox = false;
 char userInput[100] = "";
 int inputIndex = 0;
 double coefficients[10] = {0}; // Coefficients for shapes
 char activeShape[20] = "";     // Current shape being plotted
 
+//Manage panning and Coordinate display
+bool isPanning = false;
+int lastMouseX, lastMouseY;
+
 // Toggle functions
 bool showSin = true, showCos = true, showTan = false, showExp = false, show_xSquare = false;
 
+//
+bool showGrid = true;
+
+// Panning offsets
+double offsetX = 0, offsetY = 0;
+
 // Draw the coordinate axes
 void drawGrid(double gridSpacing) {
+    if (!showGrid) return;
+
     iSetColor(200, 200, 200); // Light gray for grid lines
     
     // Draw vertical grid lines
     for (double x = -windowWidth / 2; x <= windowWidth / 2; x += gridSpacing) {
-        iLine(windowWidth / 2 + x, 0, windowWidth / 2 + x, windowHeight);
+        iLine(windowWidth / 2 + x + offsetX * scaleX, 0, windowWidth / 2 + x + offsetX * scaleX, windowHeight);
     }
     
     // Draw horizontal grid lines
     for (double y = -windowHeight / 2; y <= windowHeight / 2; y += gridSpacing) {
-        iLine(0, windowHeight / 2 + y, windowWidth, windowHeight / 2 + y);
+        iLine(0, windowHeight / 2 + y + offsetY * scaleY, windowWidth, windowHeight / 2 + y + offsetY * scaleY);
     }
 
     iSetColor(255, 255, 255); // White for main axes
-    iLine(0, windowHeight / 2, windowWidth, windowHeight / 2); // X-axis
-    iLine(windowWidth / 2, 0, windowWidth / 2, windowHeight);  // Y-axis
+    iLine(0, windowHeight / 2 + offsetY * scaleY, windowWidth, windowHeight / 2 + offsetY * scaleY); // X-axis
+    iLine(windowWidth / 2 + offsetX * scaleX, 0, windowWidth / 2 + offsetX * scaleX, windowHeight);  // Y-axis
 }
 
 void drawAxes() {
@@ -46,8 +60,6 @@ void drawAxes() {
     // Draw background grid
     drawGrid(gridSpacing);
 }
-
-
 
 // Function to evaluate user-defined function
 double evaluateFunction(double x, const char* func) {
@@ -68,15 +80,18 @@ void plotFunction(const char* func, double r, double g, double b) {
         double y1 = evaluateFunction(x, func);
         double y2 = evaluateFunction(x + step, func);
 
-        double screenX1 = windowWidth / 2 + x * scaleX;
-        double screenY1 = windowHeight / 2 + y1 * scaleY;
-        double screenX2 = windowWidth / 2 + (x + step) * scaleX;
-        double screenY2 = windowHeight / 2 + y2 * scaleY;
+        double screenX1 = windowWidth / 2 + (x + offsetX) * scaleX;
+        double screenY1 = windowHeight / 2 + (y1 + offsetY) * scaleY;
+        double screenX2 = windowWidth / 2 + (x + step + offsetX) * scaleX;
+        double screenY2 = windowHeight / 2 + (y2 + offsetY) * scaleY;
 
-        // Avoid plotting undefined values
-        if (y1 < 10 && y1 > -10 && y2 < 10 && y2 > -10) {
-            iLine(screenX1, screenY1, screenX2, screenY2);
-        }
+        // Avoid plotting undefined values for tan(x)
+        if (!std::isfinite(y1) || !std::isfinite(y2)) continue;
+
+        // Avoid plotting extremely large values
+        if (fabs(y1) > 10 || fabs(y2) > 10) continue;
+
+        iLine(screenX1, screenY1, screenX2, screenY2);
     }
 }
 
@@ -88,14 +103,13 @@ void plotEllipse(double a, double b) {
     iEllipse(centerX, centerY, a * scaleX, b * scaleY, 100); // Using iEllipse for smoother ellipse
 }
 
-
 // Plot a parabola: y = ax^2 + bx + c
 void plotParabola(double a, double b, double c) {
     iSetColor(0, 255, 255); // Cyan
     for (double x = -10; x <= 10; x += step) {
         double y = a * x * x + b * x + c;
-        double screenX = windowWidth / 2 + x * scaleX;
-        double screenY = windowHeight / 2 + y * scaleY;
+        double screenX = windowWidth / 2 + (x + offsetX) * scaleX;
+        double screenY = windowHeight / 2 + (y + offsetY) * scaleY;
         iPoint(screenX, screenY);
     }
 }
@@ -105,17 +119,17 @@ void plotHyperbola(double a, double b) {
     iSetColor(255, 165, 0); // Orange
     for (double x = -10; x <= -a; x += step) {
         double y = sqrt(((x * x) / (a * a) - 1) * b * b);
-        double screenX = windowWidth / 2 + x * scaleX;
-        double screenY1 = windowHeight / 2 + y * scaleY;
-        double screenY2 = windowHeight / 2 - y * scaleY;
+        double screenX = windowWidth / 2 + (x + offsetX) * scaleX;
+        double screenY1 = windowHeight / 2 + (y + offsetY) * scaleY;
+        double screenY2 = windowHeight / 2 + (-y + offsetY) * scaleY;
         iPoint(screenX, screenY1);
         iPoint(screenX, screenY2);
     }
     for (double x = a; x <= 10; x += step) {
         double y = sqrt(((x * x) / (a * a) - 1) * b * b);
-        double screenX = windowWidth / 2 + x * scaleX;
-        double screenY1 = windowHeight / 2 + y * scaleY;
-        double screenY2 = windowHeight / 2 - y * scaleY;
+        double screenX = windowWidth / 2 + (x + offsetX) * scaleX;
+        double screenY1 = windowHeight / 2 + (y + offsetY) * scaleY;
+        double screenY2 = windowHeight / 2 + (-y + offsetY) * scaleY;
         iPoint(screenX, screenY1);
         iPoint(screenX, screenY2);
     }
@@ -126,8 +140,8 @@ void plotLine(double m, double c) {
     iSetColor(0, 255, 0); // Green
     for (double x = -10; x <= 10; x += step) {
         double y = m * x + c;
-        double screenX = windowWidth / 2 + x * scaleX;
-        double screenY = windowHeight / 2 + y * scaleY;
+        double screenX = windowWidth / 2 + (x + offsetX) * scaleX;
+        double screenY = windowHeight / 2 + (y + offsetY) * scaleY;
         iPoint(screenX, screenY);
     }
 }
@@ -141,7 +155,7 @@ void iDraw() {
     if (showCos) plotFunction("cos(x)", 255, 0, 0);         // Red: y = cos(x)
     if (showTan) plotFunction("tan(x)", 0, 255, 0);         // Green: y = tan(x)
     if (showExp) plotFunction("exp(x)", 255, 128, 0);       // Orange: y = exp(x)
-    if (show_xSquare) plotFunction("x*x", 128, 0, 255);     // Purple: y = x^2
+    if (show_xSquare) plotFunction("x^2", 128, 0, 255);     // Purple: y = x^2
 
     // Plot shapes based on user input
     if (strcmp(activeShape, "Ellipse") == 0 && inputIndex >= 2) {
@@ -170,49 +184,46 @@ void iDraw() {
     iSetColor(255, 255, 255); // White text
     iText(10, 10, "Press 1 to toggle Sin, 2 to toggle Cos, 3 to toggle Tan, 4 to toggle Exp, 5 to toggle x^2");
     iText(10, 30, "Press 6 to plot Ellipse, 7 to plot Parabola, 8 to plot Hyperbola, 9 to plot Line");
-    iText(10, 50, "Use [ and ] keys to zoom in and out");
-    iText(10, 70, "Press 'q' to exit");
+    iText(10, 50, "Use '[' and ']' keys to zoom in and out");
+    iText(10, 70, "Press 'g' to toggle grid, arrow keys to pan");
+    iText(10, 90, "Press 'q' to exit");
 
     // Display current input for shapes
     if (showTextBox) {
         if (strcmp(activeShape, "Ellipse") == 0) {
-            iText(10, 90, "Enter coefficients for Ellipse (a, b):");
+            iText(10, 110, "Enter coefficients for Ellipse (a, b):");
             char aText[100];
             char bText[100];
             sprintf(aText, "a = %s", inputIndex > 0 ? userInput : "...");
             sprintf(bText, "b = %s", inputIndex > 1 ? userInput : "...");
-            iText(10, 110, aText);
-            iText(10, 130, bText);
+            iText(10, 130, aText);
+            iText(10, 150, bText);
         } else if (strcmp(activeShape, "Parabola") == 0) {
-            iText(10, 90, "Enter coefficients for Parabola (a, b, c):");
+            iText(10, 110, "Enter coefficients for Parabola (a, b, c):");
             char aText[100], bText[100], cText[100];
             sprintf(aText, "a = %s", inputIndex > 0 ? userInput : "...");
             sprintf(bText, "b = %s", inputIndex > 1 ? userInput : "...");
             sprintf(cText, "c = %s", inputIndex > 2 ? userInput : "...");
-            iText(10, 110, aText);
-            iText(10, 130, bText);
-            iText(10, 150, cText);
+            iText(10, 130, aText);
+            iText(10, 150, bText);
+            iText(10, 170, cText);
         } else if (strcmp(activeShape, "Hyperbola") == 0) {
-            iText(10, 90, "Enter coefficients for Hyperbola (a, b):");
+            iText(10, 110, "Enter coefficients for Hyperbola (a, b):");
             char aText[100], bText[100];
             sprintf(aText, "a = %s", inputIndex > 0 ? userInput : "...");
             sprintf(bText, "b = %s", inputIndex > 1 ? userInput : "...");
-            iText(10, 110, aText);
-            iText(10, 130, bText);
+            iText(10, 130, aText);
+            iText(10, 150, bText);
         } else if (strcmp(activeShape, "StraightLine") == 0) {
-            iText(10, 90, "Enter coefficients for Straight Line (m, c):");
+            iText(10, 110, "Enter coefficients for Straight Line (m, c):");
             char mText[100], cText[100];
             sprintf(mText, "m = %s", inputIndex > 0 ? userInput : "...");
             sprintf(cText, "c = %s", inputIndex > 1 ? userInput : "...");
-            iText(10, 110, mText);
-            iText(10, 130, cText);
+            iText(10, 130, mText);
+            iText(10, 150, cText);
         }
     }
 }
-
-
-
-
 
 void iKeyboard(unsigned char key) {
     if (showTextBox) {
@@ -240,17 +251,26 @@ void iKeyboard(unsigned char key) {
             case '7': showTextBox = true; strcpy(activeShape, "Parabola"); inputIndex = 0; break;
             case '8': showTextBox = true; strcpy(activeShape, "Hyperbola"); inputIndex = 0; break;
             case '9': showTextBox = true; strcpy(activeShape, "StraightLine"); inputIndex = 0; break;
-            case '[': scaleX += 10; scaleY += 10; break; // Zoom in
-            case ']': scaleX -= 10; scaleY -= 10; break; // Zoom out
-            case 'q': exit(0); break; // Exit
+            case '[': 
+                if (scaleX < maxScale && scaleY < maxScale) {
+                    scaleX *= 1.1; scaleY *= 1.1;
+                    step /= 1.1; // Increase detail when zooming in
+                }
+                break;
+            case ']':
+                if (scaleX > minScale && scaleY > minScale) {
+                    scaleX /= 1.1; scaleY /= 1.1;
+                    step *= 1.1; // Decrease detail when zooming out
+                }
+                break;
+            case 'g':
+                showGrid = !showGrid; // Toggle grid visibility
+                break;
+            case 'q':
+                exit(0); // Exit
+                break;
         }
     }
-}
-
-
-
-void iMouseMove(int mx, int my) {
-    // Intentionally left empty
 }
 
 void iPassiveMouseMove(int mx, int my) {
@@ -258,11 +278,47 @@ void iPassiveMouseMove(int mx, int my) {
 }
 
 void iMouse(int button, int state, int mx, int my) {
-    // Intentionally left empty
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        isPanning = true;
+        lastMouseX = mx;
+        lastMouseY = my;
+    } else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
+        isPanning = false;
+    } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+        double graphX = (mx - windowWidth / 2 - offsetX * scaleX) / scaleX;
+        double graphY = (my - windowHeight / 2 - offsetY * scaleY) / scaleY;
+        char coordText[100];
+        sprintf(coordText, "Coordinates: (%.2f, %.2f)", graphX, graphY);
+        iSetColor(255, 255, 255);
+        iText(mx, my, coordText);
+    }
+}
+
+
+void iMouseMove(int mx, int my) {
+    if (isPanning) {
+        offsetX += (mx - lastMouseX) / scaleX;
+        offsetY += (my - lastMouseY) / scaleY;
+        lastMouseX = mx;
+        lastMouseY = my;
+    }
 }
 
 void iSpecialKeyboard(unsigned char key) {
-    // Intentionally left empty
+    switch (key) {
+        case GLUT_KEY_LEFT:
+            offsetX -= 0.1; // Pan left
+            break;
+        case GLUT_KEY_RIGHT:
+            offsetX += 0.1; // Pan right
+            break;
+        case GLUT_KEY_UP:
+            offsetY += 0.1; // Pan up
+            break;
+        case GLUT_KEY_DOWN:
+            offsetY -= 0.1; // Pan down
+            break;
+    }
 }
 
 int main() {
