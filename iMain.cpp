@@ -10,7 +10,7 @@ int windowWidth = 800, windowHeight = 600;
 
 // Graph scaling and offsets
 double scaleX = 50, scaleY = 50;
-double step = 0.0001;
+double step = 0.0001;   // controls the density of plotted points
 double minScale = 5, maxScale = 100;
 
 // User input handling preparation
@@ -23,6 +23,7 @@ char activeShape[20] = "";     // Current shape being plotted
 //Manage panning and Coordinate display
 bool isPanning = false;
 int lastMouseX, lastMouseY;
+double offsetX = 1, offsetY = 1; // Panning offsets
 
 // Toggle functions
 bool showSin = true, showCos = true, showTan = false, showExp = false, show_xSquare = false;
@@ -30,8 +31,8 @@ bool showSin = true, showCos = true, showTan = false, showExp = false, show_xSqu
 //
 bool showGrid = true;
 
-// Panning offsets
-double offsetX = 0, offsetY = 0;
+
+
 
 // Draw the coordinate axes
 void drawGrid(double gridSpacing) {
@@ -98,10 +99,11 @@ void plotFunction(const char* func, double r, double g, double b) {
 // Plot an ellipse: x^2/a^2 + y^2/b^2 = 1
 void plotEllipse(double a, double b) {
     iSetColor(255, 0, 255); // Purple
-    double centerX = windowWidth / 2;
-    double centerY = windowHeight / 2;
+    double centerX = windowWidth / 2 + offsetX * scaleX;
+    double centerY = windowHeight / 2 + offsetY * scaleY;
     iEllipse(centerX, centerY, a * scaleX, b * scaleY, 100); // Using iEllipse for smoother ellipse
 }
+
 
 // Plot a parabola: y = ax^2 + bx + c
 void plotParabola(double a, double b, double c) {
@@ -145,6 +147,9 @@ void plotLine(double m, double c) {
         iPoint(screenX, screenY);
     }
 }
+
+
+
 
 void iDraw() {
     iClear();       // Clear the screen
@@ -278,6 +283,7 @@ void iPassiveMouseMove(int mx, int my) {
 }
 
 void iMouse(int button, int state, int mx, int my) {
+    static int coordDisplayTime = 0;
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
         isPanning = true;
         lastMouseX = mx;
@@ -291,14 +297,15 @@ void iMouse(int button, int state, int mx, int my) {
         sprintf(coordText, "Coordinates: (%.2f, %.2f)", graphX, graphY);
         iSetColor(255, 255, 255);
         iText(mx, my, coordText);
+        coordDisplayTime = glutGet(GLUT_ELAPSED_TIME); // Record the display time
     }
 }
 
 
 void iMouseMove(int mx, int my) {
     if (isPanning) {
-        offsetX += (mx - lastMouseX) / scaleX;
-        offsetY += (my - lastMouseY) / scaleY;
+        offsetX += (mx - lastMouseX) / (scaleX * 10);
+        offsetY += (my - lastMouseY) / (scaleY * 10);
         lastMouseX = mx;
         lastMouseY = my;
     }
