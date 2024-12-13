@@ -277,7 +277,6 @@ int readPolynomial(const char* equation, float *a4, float *a3, float *a2, float 
 
 int readTrigFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType) {
     *A = 1.0f; *B = 1.0f; *C = 0.0f; *D = 0.0f;
-
     char cleanEq[MAX_INPUT_LENGTH];
     strncpy(cleanEq, equation, MAX_INPUT_LENGTH - 1);
     removeWhitespaces(cleanEq);
@@ -285,61 +284,169 @@ int readTrigFunction(const char* equation, float *A, float *B, float *C, float *
     char *funcPtr = strstr(cleanEq, funcType);
     if (!funcPtr) return 0;
 
+    // Handle coefficient A (amplitude)
     char *ptr = cleanEq;
     if (strncmp(ptr, "y=", 2) == 0) ptr += 2;
 
     if (ptr != funcPtr) {
-        char coeffStr[MAX_INPUT_LENGTH];
-        strncpy(coeffStr, funcPtr - ptr <= 0 ? ptr : ptr, funcPtr - ptr);
-        coeffStr[funcPtr - ptr] = '\0';
-        *A = atof(coeffStr);
+        if (ptr[0] == '-' && ptr + 1 == funcPtr) {
+            *A = -1.0f;
+        } else {
+            char coeffStr[MAX_INPUT_LENGTH];
+            strncpy(coeffStr, ptr, funcPtr - ptr);
+            coeffStr[funcPtr - ptr] = '\0';
+            if (strlen(coeffStr) > 0) {
+                *A = atof(coeffStr);
+            }
+        }
     }
 
+    // Find opening and closing parentheses
     ptr = funcPtr + strlen(funcType);
+    if (*ptr == '(') ptr++;
+    char *closePtr = strchr(ptr, ')');
+    if (!closePtr) return 0;
 
-    if (*ptr == '(') {
-        ptr++;
-    } else {
-        return 0;
-    }
-
+    // Parse inner function (Bx + C)
     char innerFunc[MAX_INPUT_LENGTH];
-    int idx = 0;
+    strncpy(innerFunc, ptr, closePtr - ptr);
+    innerFunc[closePtr - ptr] = '\0';
 
-    while (*ptr != ')' && *ptr != '\0') {
-        innerFunc[idx++] = *ptr++;
-    }
-    innerFunc[idx] = '\0';
-
-    // Parse B and C from inner function Bx + C
     char *xPtr = strchr(innerFunc, 'x');
-    if (!xPtr) return 0;
+    if (xPtr) {
+        // Handle B (coefficient of x)
+        if (xPtr == innerFunc) {
+            *B = 1.0f;
+        } else if (xPtr == innerFunc + 1 && innerFunc[0] == '-') {
+            *B = -1.0f;
+        } else {
+            char bStr[MAX_INPUT_LENGTH];
+            strncpy(bStr, innerFunc, xPtr - innerFunc);
+            bStr[xPtr - innerFunc] = '\0';
+            if (strlen(bStr) > 0) {
+                *B = atof(bStr);
+            }
+        }
 
-    if (xPtr != innerFunc) {
-        char coeffStr[MAX_INPUT_LENGTH];
-        strncpy(coeffStr, innerFunc, xPtr - innerFunc);
-        coeffStr[xPtr - innerFunc] = '\0';
-        *B = atof(coeffStr);
+        // Handle C (phase shift)
+        ptr = xPtr + 1;
+        if (*ptr == '+' || *ptr == '-') {
+            *C = atof(ptr);
+        }
     }
 
-    ptr = xPtr + 1;
-    if (*ptr == '+' || *ptr == '-') {
-        *C = atof(ptr);
-    }
+    // Handle D (vertical shift)
+    ptr = closePtr + 1;
+    while (*ptr == ' ') ptr++; // Skip spaces
 
-    ptr = strchr(ptr, ')');
-    if (ptr && *(ptr + 1) == '+') {
-        *D = atof(ptr + 2);
-    } else if (ptr && *(ptr + 1) == '-') {
-        *D = -atof(ptr + 2);
+    if (*ptr) {
+        if (*ptr == '+') {
+            *D = atof(ptr + 1);
+        } else if (*ptr == '-') {
+            *D = -atof(ptr + 1);
+        }
     }
 
     return 1;
 }
 
+
 int readInverseTrigFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType) {
-    return readTrigFunction(equation, A, B, C, D, funcType);
+    *A = 1.0f; *B = 1.0f; *C = 0.0f; *D = 0.0f;
+    char cleanEq[MAX_INPUT_LENGTH];
+    strncpy(cleanEq, equation, MAX_INPUT_LENGTH - 1);
+    removeWhitespaces(cleanEq);
+
+    // Check for different inverse trig notations
+    char *funcPtr = NULL;
+    if (strstr(cleanEq, "arcsin")) {
+        funcPtr = strstr(cleanEq, "arcsin");
+        strcpy(funcType, "arcsin");
+    } else if (strstr(cleanEq, "asin")) {
+        funcPtr = strstr(cleanEq, "asin");
+        strcpy(funcType, "asin");
+    } else if (strstr(cleanEq, "arccos")) {
+        funcPtr = strstr(cleanEq, "arccos");
+        strcpy(funcType, "arccos");
+    } else if (strstr(cleanEq, "acos")) {
+        funcPtr = strstr(cleanEq, "acos");
+        strcpy(funcType, "acos");
+    } else if (strstr(cleanEq, "arctan")) {
+        funcPtr = strstr(cleanEq, "arctan");
+        strcpy(funcType, "arctan");
+    } else if (strstr(cleanEq, "atan")) {
+        funcPtr = strstr(cleanEq, "atan");
+        strcpy(funcType, "atan");
+    }
+
+    if (!funcPtr) return 0;
+
+    // Handle coefficient A (amplitude)
+    char *ptr = cleanEq;
+    if (strncmp(ptr, "y=", 2) == 0) ptr += 2;
+
+    if (ptr != funcPtr) {
+        if (ptr[0] == '-' && ptr + 1 == funcPtr) {
+            *A = -1.0f;
+        } else {
+            char coeffStr[MAX_INPUT_LENGTH];
+            strncpy(coeffStr, ptr, funcPtr - ptr);
+            coeffStr[funcPtr - ptr] = '\0';
+            if (strlen(coeffStr) > 0) {
+                *A = atof(coeffStr);
+            }
+        }
+    }
+
+    // Find opening and closing parentheses
+    ptr = funcPtr + strlen(funcType);
+    if (*ptr == '(') ptr++;
+    char *closePtr = strchr(ptr, ')');
+    if (!closePtr) return 0;
+
+    // Parse inner function (Bx + C)
+    char innerFunc[MAX_INPUT_LENGTH];
+    strncpy(innerFunc, ptr, closePtr - ptr);
+    innerFunc[closePtr - ptr] = '\0';
+
+    char *xPtr = strchr(innerFunc, 'x');
+    if (xPtr) {
+        // Handle B (coefficient of x)
+        if (xPtr == innerFunc) {
+            *B = 1.0f;
+        } else if (xPtr == innerFunc + 1 && innerFunc[0] == '-') {
+            *B = -1.0f;
+        } else {
+            char bStr[MAX_INPUT_LENGTH];
+            strncpy(bStr, innerFunc, xPtr - innerFunc);
+            bStr[xPtr - innerFunc] = '\0';
+            if (strlen(bStr) > 0) {
+                *B = atof(bStr);
+            }
+        }
+
+        // Handle C (horizontal shift)
+        ptr = xPtr + 1;
+        if (*ptr == '+' || *ptr == '-') {
+            *C = atof(ptr);
+        }
+    }
+
+    // Handle D (vertical shift)
+    ptr = closePtr + 1;
+    while (*ptr == ' ') ptr++; // Skip spaces
+
+    if (*ptr) {
+        if (*ptr == '+') {
+            *D = atof(ptr + 1);
+        } else if (*ptr == '-') {
+            *D = -atof(ptr + 1);
+        }
+    }
+
+    return 1;
 }
+
 
 int readExponentialFunction(const char* equation, float *A, float *B, float *C, float *D) {
     *A = 1.0f; *B = 1.0f; *C = 0.0f; *D = 0.0f;
@@ -350,60 +457,148 @@ int readExponentialFunction(const char* equation, float *A, float *B, float *C, 
     char *expPtr = strstr(cleanEq, "exp");
     if (!expPtr) return 0;
 
+    // Handle coefficient A
     char *ptr = cleanEq;
     if (strncmp(ptr, "y=", 2) == 0) ptr += 2;
 
     if (ptr != expPtr) {
-        char coeffStr[MAX_INPUT_LENGTH];
-        strncpy(coeffStr, ptr, expPtr - ptr);
-        coeffStr[expPtr - ptr] = '\0';
-        *A = atof(coeffStr);
+        if (ptr[0] == '-' && ptr + 1 == expPtr) {
+            *A = -1.0f;
+        } else {
+            char coeffStr[MAX_INPUT_LENGTH];
+            strncpy(coeffStr, ptr, expPtr - ptr);
+            coeffStr[expPtr - ptr] = '\0';
+            if (strlen(coeffStr) > 0) {
+                *A = atof(coeffStr);
+            }
+        }
     }
 
-    ptr = expPtr + 3;
+    // Find opening and closing parentheses
+    ptr = expPtr + 3; // Move past "exp"
+    if (*ptr == '(') ptr++;
+    char *closePtr = strchr(ptr, ')');
+    if (!closePtr) return 0;
 
-    if (*ptr == '(') {
-        ptr++;
-    } else {
-        return 0;
-    }
-
+    // Parse inner function (Bx + C)
     char innerFunc[MAX_INPUT_LENGTH];
-    int idx = 0;
+    strncpy(innerFunc, ptr, closePtr - ptr);
+    innerFunc[closePtr - ptr] = '\0';
 
-    while (*ptr != ')' && *ptr != '\0') {
-        innerFunc[idx++] = *ptr++;
-    }
-    innerFunc[idx] = '\0';
-
-    // Parse B and C from inner function Bx + C
     char *xPtr = strchr(innerFunc, 'x');
-    if (!xPtr) return 0;
+    if (xPtr) {
+        // Handle B
+        if (xPtr == innerFunc) {
+            *B = 1.0f;
+        } else if (xPtr == innerFunc + 1 && innerFunc[0] == '-') {
+            *B = -1.0f;
+        } else {
+            char bStr[MAX_INPUT_LENGTH];
+            strncpy(bStr, innerFunc, xPtr - innerFunc);
+            bStr[xPtr - innerFunc] = '\0';
+            if (strlen(bStr) > 0) {
+                *B = atof(bStr);
+            }
+        }
 
-    if (xPtr != innerFunc) {
-        char coeffStr[MAX_INPUT_LENGTH];
-        strncpy(coeffStr, innerFunc, xPtr - innerFunc);
-        coeffStr[xPtr - innerFunc] = '\0';
-        *B = atof(coeffStr);
+        // Handle C
+        ptr = xPtr + 1;
+        if (*ptr == '+' || *ptr == '-') {
+            *C = atof(ptr);
+        }
     }
 
-    ptr = xPtr + 1;
-    if (*ptr == '+' || *ptr == '-') {
-        *C = atof(ptr);
-    }
+    // Handle D (vertical shift)
+    ptr = closePtr + 1;
+    while (*ptr == ' ') ptr++;
 
-    ptr = strchr(ptr, ')');
-    if (ptr && *(ptr + 1) == '+') {
-        *D = atof(ptr + 2);
-    } else if (ptr && *(ptr + 1) == '-') {
-        *D = -atof(ptr + 2);
+    if (*ptr) {
+        if (*ptr == '+') {
+            *D = atof(ptr + 1);
+        } else if (*ptr == '-') {
+            *D = -atof(ptr + 1);
+        }
     }
 
     return 1;
 }
 
+
 int readLogFunction(const char* equation, float *A, float *B, float *C, float *D, char *funcType) {
-    return readExponentialFunction(equation, A, B, C, D);
+    *A = 1.0f; *B = 1.0f; *C = 0.0f; *D = 0.0f;
+    char cleanEq[MAX_INPUT_LENGTH];
+    strncpy(cleanEq, equation, MAX_INPUT_LENGTH - 1);
+    removeWhitespaces(cleanEq);
+
+    char *logPtr = strstr(cleanEq, funcType);
+    if (!logPtr) return 0;
+
+    char *ptr = cleanEq;
+    if (strncmp(ptr, "y=", 2) == 0) ptr += 2;
+
+    // Handle coefficient A (before log/ln)
+    if (ptr != logPtr) {
+        if (ptr[0] == '-' && ptr + 1 == logPtr) {
+            *A = -1.0f;
+        } else {
+            char coeffStr[MAX_INPUT_LENGTH];
+            strncpy(coeffStr, ptr, logPtr - ptr);
+            coeffStr[logPtr - ptr] = '\0';
+            if (strlen(coeffStr) > 0) {
+                *A = atof(coeffStr);
+            }
+        }
+    }
+
+    // Find the opening parenthesis
+    ptr = logPtr + strlen(funcType);
+    if (*ptr == '(') ptr++;
+
+    // Find the closing parenthesis
+    char *closePtr = strchr(ptr, ')');
+    if (!closePtr) return 0;
+
+    // Parse the inner part (Bx + C)
+    char innerFunc[MAX_INPUT_LENGTH];
+    strncpy(innerFunc, ptr, closePtr - ptr);
+    innerFunc[closePtr - ptr] = '\0';
+
+    char *xPtr = strchr(innerFunc, 'x');
+    if (xPtr) {
+        // Handle coefficient B (before x)
+        if (xPtr == innerFunc) {
+            *B = 1.0f;
+        } else if (xPtr == innerFunc + 1 && innerFunc[0] == '-') {
+            *B = -1.0f;
+        } else {
+            char bStr[MAX_INPUT_LENGTH];
+            strncpy(bStr, innerFunc, xPtr - innerFunc);
+            bStr[xPtr - innerFunc] = '\0';
+            if (strlen(bStr) > 0) {
+                *B = atof(bStr);
+            }
+        }
+
+        // Handle C (after x)
+        ptr = xPtr + 1;
+        if (*ptr == '+' || *ptr == '-') {
+            *C = atof(ptr);
+        }
+    }
+
+    // Handle D (vertical shift) - after the closing parenthesis
+    ptr = closePtr + 1;
+    while (*ptr == ' ') ptr++; // Skip any spaces
+
+    if (*ptr) {
+        if (*ptr == '+') {
+            *D = atof(ptr + 1);
+        } else if (*ptr == '-') {
+            *D = -atof(ptr + 1);
+        }
+    }
+
+    return 1;
 }
 
 int readCircle(const char *equation, float *h, float *k, float *r) {
@@ -453,15 +648,63 @@ int readCircle(const char *equation, float *h, float *k, float *r) {
 }
 
 int readEllipse(const char *equation, float *h, float *k, float *a, float *b) {
-    // For simplicity, assume ellipse is centered at (h, k) with equation:
-    // ((x - h)^2) / a^2 + ((y - k)^2) / b^2 = 1
-    *h = 0; *k = 0; *a = 5; *b = 3; // Default values
+    *h = 0.0f; *k = 0.0f; *a = 1.0f; *b = 1.0f;
+    char cleanEq[MAX_INPUT_LENGTH];
+    strcpy(cleanEq, equation);
+    removeWhitespaces(cleanEq);
+
+    // Parse x-term
+    char *xPart = strstr(cleanEq, "(x");
+    if (!xPart) return 0;
+
+    // Parse h (x-center)
+    char *ptr = xPart + 2;
+    if (*ptr == '-') {
+        ptr++;
+        *h = atof(ptr);
+    } else if (*ptr == '+') {
+        ptr++;
+        *h = -atof(ptr);
+    }
+
+    // Find a^2 denominator
+    char *denomPtr = strstr(ptr, "/");
+    if (denomPtr) {
+        ptr = denomPtr + 1;
+        char *endPtr = strchr(ptr, '+');
+        if (endPtr) {
+            char aStr[MAX_INPUT_LENGTH];
+            strncpy(aStr, ptr, endPtr - ptr);
+            aStr[endPtr - ptr] = '\0';
+            *a = sqrt(atof(aStr));
+        }
+    }
+
+    // Parse y-term
+    char *yPart = strstr(cleanEq, "(y");
+    if (!yPart) return 0;
+
+    // Parse k (y-center)
+    ptr = yPart + 2;
+    if (*ptr == '-') {
+        ptr++;
+        *k = atof(ptr);
+    } else if (*ptr == '+') {
+        ptr++;
+        *k = -atof(ptr);
+    }
+
+    // Find b^2 denominator
+    denomPtr = strstr(ptr, "/");
+    if (denomPtr) {
+        ptr = denomPtr + 1;
+        *b = sqrt(atof(ptr));
+    }
+
     return 1;
 }
-
 int readParabola(const char *equation, float *a, float *b, float *c) {
-    // Expected format y = ax^2 + bx + c
-    *a = 1.0f; *b = 0.0f; *c = 0.0f;
+    *a = 0.0f; *b = 0.0f; *c = 0.0f;
     char cleanEq[MAX_INPUT_LENGTH];
     strcpy(cleanEq, equation);
     removeWhitespaces(cleanEq);
@@ -469,15 +712,100 @@ int readParabola(const char *equation, float *a, float *b, float *c) {
     char *ptr = cleanEq;
     if (strncmp(ptr, "y=", 2) == 0) ptr += 2;
 
-    // For simplicity, assign default values
-    *a = 1.0f; *b = 0.0f; *c = 0.0f;
+    // Parse quadratic term (ax^2)
+    char *x2Ptr = strstr(ptr, "x^2");
+    if (x2Ptr) {
+        if (x2Ptr == ptr) {
+            *a = 1.0f;
+        } else if (x2Ptr == ptr + 1 && ptr[0] == '-') {
+            *a = -1.0f;
+        } else {
+            char aStr[MAX_INPUT_LENGTH];
+            strncpy(aStr, ptr, x2Ptr - ptr);
+            aStr[x2Ptr - ptr] = '\0';
+            *a = atof(aStr);
+        }
+        ptr = x2Ptr + 3;
+    }
+
+    // Parse linear term (bx)
+    char *xPtr = strstr(ptr, "x");
+    if (xPtr && xPtr[-1] != '^') {  // Make sure it's not part of x^2
+        if (xPtr == ptr) {
+            *b = 1.0f;
+        } else if (xPtr == ptr + 1 && ptr[0] == '-') {
+            *b = -1.0f;
+        } else if (xPtr > ptr) {
+            char bStr[MAX_INPUT_LENGTH];
+            strncpy(bStr, ptr, xPtr - ptr);
+            bStr[xPtr - ptr] = '\0';
+            *b = atof(bStr);
+        }
+        ptr = xPtr + 1;
+    }
+
+    // Parse constant term (c)
+    if (*ptr == '+' || *ptr == '-' || isdigit(*ptr)) {
+        *c = atof(ptr);
+    }
+
     return 1;
 }
 
 int readHyperbola(const char *equation, float *h, float *k, float *a, float *b) {
-    // For simplicity, assume hyperbola is centered at (h, k) with equation:
-    // ((x - h)^2) / a^2 - ((y - k)^2) / b^2 = 1
-    *h = 0; *k = 0; *a = 5; *b = 3; // Default values
+    *h = 0.0f; *k = 0.0f; *a = 1.0f; *b = 1.0f;
+    char cleanEq[MAX_INPUT_LENGTH];
+    strcpy(cleanEq, equation);
+    removeWhitespaces(cleanEq);
+
+    // Similar to ellipse but with minus sign between terms
+    char *xPart = strstr(cleanEq, "(x");
+    if (!xPart) return 0;
+
+    // Parse h (x-center)
+    char *ptr = xPart + 2;
+    if (*ptr == '-') {
+        ptr++;
+        *h = atof(ptr);
+    } else if (*ptr == '+') {
+        ptr++;
+        *h = -atof(ptr);
+    }
+
+    // Find a^2 denominator
+    char *denomPtr = strstr(ptr, "/");
+    if (denomPtr) {
+        ptr = denomPtr + 1;
+        char *endPtr = strchr(ptr, '-');  // Note: minus instead of plus
+        if (endPtr) {
+            char aStr[MAX_INPUT_LENGTH];
+            strncpy(aStr, ptr, endPtr - ptr);
+            aStr[endPtr - ptr] = '\0';
+            *a = sqrt(atof(aStr));
+        }
+    }
+
+    // Parse y-term
+    char *yPart = strstr(cleanEq, "(y");
+    if (!yPart) return 0;
+
+    // Parse k (y-center)
+    ptr = yPart + 2;
+    if (*ptr == '-') {
+        ptr++;
+        *k = atof(ptr);
+    } else if (*ptr == '+') {
+        ptr++;
+        *k = -atof(ptr);
+    }
+
+    // Find b^2 denominator
+    denomPtr = strstr(ptr, "/");
+    if (denomPtr) {
+        ptr = denomPtr + 1;
+        *b = sqrt(atof(ptr));
+    }
+
     return 1;
 }
 
@@ -577,22 +905,31 @@ double evaluateFunction(double x, const char* func) {
         return customTan.A * tan(customTan.B * x + customTan.C) + customTan.D;
     }
     if (strcmp(func, "custom_asin") == 0) {
-        return customASin.A * asin(customASin.B * x + customASin.C) + customASin.D;
+        double input = customASin.B * x + customASin.C;
+        if (input < -1 || input > 1) return INFINITY;
+        return customASin.A * asin(input) + customASin.D;
     }
     if (strcmp(func, "custom_acos") == 0) {
-        return customACos.A * acos(customACos.B * x + customACos.C) + customACos.D;
+        double input = customACos.B * x + customACos.C;
+        if (input < -1 || input > 1) return INFINITY;
+        return customACos.A * acos(input) + customACos.D;
     }
     if (strcmp(func, "custom_atan") == 0) {
-        return customATan.A * atan(customATan.B * x + customATan.C) + customATan.D;
+        double input = customATan.B * x + customATan.C;
+        return customATan.A * atan(input) + customATan.D;
     }
     if (strcmp(func, "exponential") == 0) {
         return customExp.A * exp(customExp.B * x + customExp.C) + customExp.D;
     }
     if (strcmp(func, "logarithm") == 0) {
-        return customLog.A * log10(customLog.B * x + customLog.C) + customLog.D;
+        double input = customLog.B * x + customLog.C;
+        if (input <= 0) return INFINITY;
+        return customLog.A * log10(input) + customLog.D;
     }
     if (strcmp(func, "natural_log") == 0) {
-        return customLn.A * log(customLn.B * x + customLn.C) + customLn.D;
+        double input = customLn.B * x + customLn.C;
+        if (input <= 0) return INFINITY;
+        return customLn.A * log(input) + customLn.D;
     }
     if (strcmp(func, "polynomial") == 0) {
         return customPoly.a4 * pow(x, 4) +
@@ -824,20 +1161,20 @@ void plotFunctions() {
 }
 
 void drawUI() {
-    iSetColor(255, 255, 255); // White text
-    iText(10, 580, "Keys for Functions:");
-    iText(10, 560, "'1' - Enter custom sin(x)");
-    iText(10, 540, "'2' - Enter custom cos(x)");
-    iText(10, 520, "'3' - Enter custom tan(x)");
-    iText(10, 500, "'4' - Enter polynomial");
-    iText(10, 480, "'5' - Enter circle");
-    iText(10, 460, "'6' - Enter ellipse");
-    iText(10, 440, "'7' - Enter parabola");
-    iText(10, 420, "'8' - Enter hyperbola");
-    iText(10, 400, "'9' - Enter exponential");
-    iText(10, 380, "'0' - Enter logarithm");
-    iText(10, 360, "'-' - Enter natural log");
-    iText(10, 340, "'=' - Enter inverse trig");
+    iSetColor(255, 255, 255);
+    iText(10, 580, "Function Keys:");
+    iText(10, 560, "'1' - Sine:          y = A*sin(B*x + C) + D");
+    iText(10, 540, "'2' - Cosine:        y = A*cos(B*x + C) + D");
+    iText(10, 520, "'3' - Tangent:       y = A*tan(B*x + C) + D");
+    iText(10, 500, "'4' - Polynomial:    y = ax^4 + bx^3 + cx^2 + dx + e");
+    iText(10, 480, "'5' - Circle:        (x-h)^2 + (y-k)^2 = r^2");
+    iText(10, 460, "'6' - Ellipse:       ((x-h)^2)/a^2 + ((y-k)^2)/b^2 = 1");
+    iText(10, 440, "'7' - Parabola:      y = ax^2 + bx + c");
+    iText(10, 420, "'8' - Hyperbola:     ((x-h)^2)/a^2 - ((y-k)^2)/b^2 = 1");
+    iText(10, 400, "'9' - Exponential:   y = A*exp(B*x + C) + D");
+    iText(10, 380, "'0' - Logarithm:     y = A*log(B*x + C) + D");
+    iText(10, 360, "'-' - Natural Log:   y = A*ln(B*x + C) + D");
+    iText(10, 340, "'=' - Inverse Trig:  y = A*arcsin(B*x + C) + D");
 
     iText(10, 320, "'[' and ']' - Zoom in/out");
     iText(10, 300, "Arrow keys - Pan graph");
@@ -881,49 +1218,100 @@ void drawUI() {
         sprintf(instructions, "Enter equation for %s function and press Enter.", currentFunction);
         iText(200, 540, instructions);
 
-        // Display Example Input
-        iSetColor(150, 150, 150); // Light gray for example text
-        char exampleInput[100] = "";
-
+        // Display Format and Example
+        iSetColor(150, 150, 150); // Light gray for format text
+        char format[100] = "";
+        char example[100] = "";
+        if (strcmp(currentFunction, "inverse_trig_menu") == 0) {
+            iSetColor(255, 255, 255);
+            iText(200, 560, "Choose inverse trig function:");
+            iText(200, 540, "1 - arcsin");
+            iText(200, 520, "2 - arccos");
+            iText(200, 500, "3 - arctan");
+            iText(200, 480, "Press ESC to cancel");
+        }
         if (strcmp(currentFunction, "sin") == 0) {
-            strcpy(exampleInput, "Example: y = 2*sin(1.5*x + 0.5) + 1");
+            strcpy(format, "Format: y = A*sin(B*x + C) + D");
+            strcpy(example, "Example: y = 2*sin(1.5*x + 0.5) + 1");
         }
         else if (strcmp(currentFunction, "cos") == 0) {
-            strcpy(exampleInput, "Example: y = 3*cos(2*x - 1) + 0");
+            strcpy(format, "Format: y = A*cos(B*x + C) + D");
+            strcpy(example, "Example: y = 3*cos(2*x - 1) + 0");
         }
         else if (strcmp(currentFunction, "tan") == 0) {
-            strcpy(exampleInput, "Example: y = 1*tan(1*x + 0) + 0");
+            strcpy(format, "Format: y = A*tan(B*x + C) + D");
+            strcpy(example, "Example: y = 1*tan(1*x + 0) + 0");
         }
         else if (strcmp(currentFunction, "poly") == 0) {
-            strcpy(exampleInput, "Example: y = 2*x^4 - 3*x^3 + x^2 + 5*x - 6");
+            strcpy(format, "Format: y = ax^4 + bx^3 + cx^2 + dx + e");
+            strcpy(example, "Example: y = 2*x^4 - 3*x^3 + x^2 + 5*x - 6");
         }
         else if (strcmp(currentFunction, "circle") == 0) {
-            strcpy(exampleInput, "Example: (x - 0)^2 + (y - 0)^2 = 5^2");
-        }
-        else if (strcmp(currentFunction, "ellipse") == 0) {
-            strcpy(exampleInput, "Example: ((x - 0)^2)/9 + ((y - 0)^2)/4 = 1");
-        }
-        else if (strcmp(currentFunction, "parabola") == 0) {
-            strcpy(exampleInput, "Example: y = 1*x^2 + 0*x + 0");
-        }
-        else if (strcmp(currentFunction, "hyperbola") == 0) {
-            strcpy(exampleInput, "Example: ((x - 0)^2)/16 - ((y - 0)^2)/9 = 1");
-        }
-        else if (strcmp(currentFunction, "exp") == 0) {
-            strcpy(exampleInput, "Example: y = 1*exp(1*x + 0) + 0");
+            strcpy(format, "Format: (x - h)^2 + (y - k)^2 = r^2");
+            strcpy(example, "Example: (x - 2)^2 + (y + 1)^2 = 25");
         }
         else if (strcmp(currentFunction, "log") == 0) {
-            strcpy(exampleInput, "Example: y = 1*log(1*x + 1) + 0");
+            strcpy(format, "Format: y = [A]log([B]x + [C]) + [D]");
+            strcpy(example, "Example: y = log(x) or y = 2log(3x + 1) + 2");
         }
         else if (strcmp(currentFunction, "ln") == 0) {
-            strcpy(exampleInput, "Example: y = 1*ln(1*x + 1) + 0");
+            strcpy(format, "Format: y = [A]ln([B]x + [C]) + [D]");
+            strcpy(example, "Example: y = ln(x) or y = 2ln(3x + 1) + 2");
         }
-        else if (strcmp(currentFunction, "inverse_trig") == 0) {
-            strcpy(exampleInput, "Example: y = 1*arcsin(1*x + 0) + 0");
+        else if (strcmp(currentFunction, "parabola") == 0) {
+            strcpy(format, "Format: y = [a]x^2 + [b]x + [c]");
+            strcpy(example, "Example: y = x^2 or y = -2x^2 + 3x + 1");
+        }
+        else if (strcmp(currentFunction, "ellipse") == 0) {
+            strcpy(format, "Format: ((x-[h])^2)/[a]^2 + ((y-[k])^2)/[b]^2 = 1");
+            strcpy(example, "Example: ((x)^2)/4 + ((y)^2)/9 = 1");
+        }
+        else if (strcmp(currentFunction, "hyperbola") == 0) {
+            strcpy(format, "Format: ((x-[h])^2)/[a]^2 - ((y-[k])^2)/[b]^2 = 1");
+            strcpy(example, "Example: ((x)^2)/4 - ((y)^2)/9 = 1");
+        }
+        else if (strcmp(currentFunction, "exp") == 0) {
+            strcpy(format, "Format: y = A*exp(B*x + C) + D");
+            strcpy(example, "Example: y = 2*exp(1.5*x - 1) + 0");
         }
 
-        // Display the example input below the instructions
-        iText(200, 520, exampleInput);
+
+        else if (strcmp(currentFunction, "arcsin") == 0) {
+            strcpy(format, "Format: y = [A]arcsin([B]x + [C]) + [D]");
+            strcpy(example, "Example: y = arcsin(x) or y = 2arcsin(0.5x) + 1");
+        }
+        else if (strcmp(currentFunction, "arccos") == 0) {
+            strcpy(format, "Format: y = [A]arccos([B]x + [C]) + [D]");
+            strcpy(example, "Example: y = arccos(x) or y = 2arccos(0.5x) + 1");
+        }
+        else if (strcmp(currentFunction, "arctan") == 0) {
+            strcpy(format, "Format: y = [A]arctan([B]x + [C]) + [D]");
+            strcpy(example, "Example: y = arctan(x) or y = 2arctan(2x) - 1");
+        }
+
+        // Display format and example
+        iText(200, 520, format);
+        iText(200, 500, example);
+
+        // Add explanation of parameters
+        iSetColor(200, 200, 200);
+        if (strstr(currentFunction, "sin") || strstr(currentFunction, "cos") || 
+            strstr(currentFunction, "tan") || strcmp(currentFunction, "exp") == 0 || 
+            strcmp(currentFunction, "log") == 0 || strcmp(currentFunction, "ln") == 0) {
+            iText(200, 480, "A = amplitude, B = frequency/scale, C = phase/shift, D = vertical shift");
+        }
+        else if (strcmp(currentFunction, "circle") == 0) {
+            iText(200, 480, "h,k = center coordinates, r = radius");
+        }
+        else if (strcmp(currentFunction, "ellipse") == 0 || strcmp(currentFunction, "hyperbola") == 0) {
+            iText(200, 480, "h,k = center coordinates, a,b = semi-major/minor axes");
+        }
+        else if (strcmp(currentFunction, "parabola") == 0) {
+            iText(200, 480, "a = vertical stretch, b = horizontal shift, c = vertical shift");
+        }
+        else if (strcmp(currentFunction, "poly") == 0) {
+            iText(200, 480, "Enter coefficients for each power of x (use 0 for missing terms)");
+        }
     }
 
 
@@ -1029,6 +1417,45 @@ void drawUI() {
     }
 }
 
+void testFunctionParsing() {
+    float A, B, C, D;
+    float a4, a3, a2, a1, a0;
+
+    // Test trig functions
+    printf("\nTesting Trig Functions:\n");
+    readTrigFunction("y = sin(x)", &A, &B, &C, &D, "sin");
+    printf("sin(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+    
+    readTrigFunction("y = sin(x) - 5", &A, &B, &C, &D, "sin");
+    printf("sin(x) - 5: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+
+    // Test exponential
+    printf("\nTesting Exponential:\n");
+    readExponentialFunction("y = exp(x)", &A, &B, &C, &D);
+    printf("exp(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+    
+    readExponentialFunction("y = exp(x) - 2", &A, &B, &C, &D);
+    printf("exp(x) - 2: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+
+    // Test logarithmic
+    printf("\nTesting Logarithmic:\n");
+    readLogFunction("y = ln(x)", &A, &B, &C, &D, "ln");
+    printf("ln(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+    
+    readLogFunction("y = ln(x) - 3", &A, &B, &C, &D, "ln");
+    printf("ln(x) - 3: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+
+    // Test polynomial
+    printf("\nTesting Polynomial:\n");
+    readPolynomial("y = x^2", &a4, &a3, &a2, &a1, &a0);
+    printf("x^2: a4=%.1f, a3=%.1f, a2=%.1f, a1=%.1f, a0=%.1f\n", 
+           a4, a3, a2, a1, a0);
+    
+    readPolynomial("y = x^2 - 2x + 1", &a4, &a3, &a2, &a1, &a0);
+    printf("x^2 - 2x + 1: a4=%.1f, a3=%.1f, a2=%.1f, a1=%.1f, a0=%.1f\n", 
+           a4, a3, a2, a1, a0);
+}
+
 void iKeyboard(unsigned char key) {
     if (isSettingColor) {
         if (key == '\r') { // Enter key
@@ -1095,117 +1522,215 @@ void iKeyboard(unsigned char key) {
             return;
         }
     }
-    if (!isEnteringEquation && (key >= '0' && key <= '9' || key == '-' || key == '=')) {
-        isEnteringEquation = true;
-        equationInput[0] = '\0';
-
+    if (!isEnteringEquation) {
         switch (key) {
-        case '1': strcpy(currentFunction, "sin"); showSin = false; break;
-        case '2': strcpy(currentFunction, "cos"); showCos = false; break;
-        case '3': strcpy(currentFunction, "tan"); showTan = false; break;
-        case '4': strcpy(currentFunction, "poly"); showPoly = false; break;
-        case '5': strcpy(currentFunction, "circle"); showCircle = false; break;
-        case '6': strcpy(currentFunction, "ellipse"); showEllipse = false; break;
-        case '7': strcpy(currentFunction, "parabola"); showParabola = false; break;
-        case '8': strcpy(currentFunction, "hyperbola"); showHyperbola = false; break;
-        case '9': strcpy(currentFunction, "exp"); showExp = false; break;
-        case '0': strcpy(currentFunction, "log"); showLog = false; break;
-        case '-': strcpy(currentFunction, "ln"); showLn = false; break;
-        case '=': strcpy(currentFunction, "inverse_trig"); break;
-        default: break;
+            case '1': 
+                strcpy(currentFunction, "sin"); 
+                showSin = false; 
+                isEnteringEquation = true;
+                break;
+            case '2': 
+                strcpy(currentFunction, "cos"); 
+                showCos = false; 
+                isEnteringEquation = true;
+                break;
+            case '3': 
+                strcpy(currentFunction, "tan"); 
+                showTan = false; 
+                isEnteringEquation = true;
+                break;
+            case '4': 
+                strcpy(currentFunction, "poly"); 
+                showPoly = false; 
+                isEnteringEquation = true;
+                break;
+            case '5': 
+                strcpy(currentFunction, "circle"); 
+                showCircle = false; 
+                isEnteringEquation = true;
+                break;
+            case '6': 
+                strcpy(currentFunction, "ellipse"); 
+                showEllipse = false; 
+                isEnteringEquation = true;
+                break;
+            case '7': 
+                strcpy(currentFunction, "parabola"); 
+                showParabola = false; 
+                isEnteringEquation = true;
+                break;
+            case '8': 
+                strcpy(currentFunction, "hyperbola"); 
+                showHyperbola = false; 
+                isEnteringEquation = true;
+                break;
+            case '9': 
+                strcpy(currentFunction, "exp"); 
+                showExp = false; 
+                isEnteringEquation = true;
+                break;
+            case '0': 
+                strcpy(currentFunction, "log"); 
+                showLog = false; 
+                isEnteringEquation = true;
+                break;
+            case '-': 
+                strcpy(currentFunction, "ln"); 
+                showLn = false; 
+                isEnteringEquation = true;
+                break;
+            case '=': 
+                // Show inverse trig menu
+                strcpy(currentFunction, "inverse_trig_menu");
+                isEnteringEquation = true;  // Set this to true so the menu can be processed
+                equationInput[0] = '\0';    // Clear any existing input
+                break;
+            case 'c': 
+                isSettingColor = true;
+                inputStep = 0;
+                inputBuffer[0] = '\0';
+                selectedFunction[0] = '\0';
+                break;
+            case 'g':
+                showGridFlag = !showGridFlag;
+                break;
+            case '[':
+                if (scaleX < MAX_SCALE && scaleY < MAX_SCALE) {
+                    scaleX *= 1.1;
+                    scaleY *= 1.1;
+                    step /= 1.1;
+                }
+                break;
+            case ']':
+                if (scaleX > MIN_SCALE && scaleY > MIN_SCALE) {
+                    scaleX /= 1.1;
+                    scaleY /= 1.1;
+                    step *= 1.1;
+                }
+                break;
+            case 'q':
+                exit(0);
+                break;
         }
-        return;
     }
-
-    if (isEnteringEquation) {
+    // Handle inverse trig menu selection
+    else if (strcmp(currentFunction, "inverse_trig_menu") == 0) {
+        switch (key) {
+            case '1':
+                strcpy(currentFunction, "arcsin");
+                showASin = false;
+                isEnteringEquation = true;
+                break;
+            case '2':
+                strcpy(currentFunction, "arccos");
+                showACos = false;
+                isEnteringEquation = true;
+                break;
+            case '3':
+                strcpy(currentFunction, "arctan");
+                showATan = false;
+                isEnteringEquation = true;
+                break;
+            case 27: // ESC key
+                isEnteringEquation = false;
+                break;
+        }
+    }
+    // Handle equation input
+    else if (isEnteringEquation) {
         if (key == '\r') { // Enter key
             bool success = false;
-            if (strcmp(currentFunction, "poly") == 0) {
-                success = readPolynomial(equationInput, &customPoly.a4, &customPoly.a3, &customPoly.a2, &customPoly.a1, &customPoly.a0);
-                if (success) showPoly = true;
-            } else if (strcmp(currentFunction, "sin") == 0) {
-                success = readTrigFunction(equationInput, &customSin.A, &customSin.B, &customSin.C, &customSin.D, "sin");
+            char funcType[20] = "";
+
+            if (strcmp(currentFunction, "sin") == 0) {
+                success = readTrigFunction(equationInput, &customSin.A, &customSin.B, 
+                                        &customSin.C, &customSin.D, "sin");
                 if (success) showSin = true;
-            } else if (strcmp(currentFunction, "cos") == 0) {
-                success = readTrigFunction(equationInput, &customCos.A, &customCos.B, &customCos.C, &customCos.D, "cos");
+            }
+            else if (strcmp(currentFunction, "cos") == 0) {
+                success = readTrigFunction(equationInput, &customCos.A, &customCos.B, 
+                                        &customCos.C, &customCos.D, "cos");
                 if (success) showCos = true;
-            } else if (strcmp(currentFunction, "tan") == 0) {
-                success = readTrigFunction(equationInput, &customTan.A, &customTan.B, &customTan.C, &customTan.D, "tan");
+            }
+            else if (strcmp(currentFunction, "tan") == 0) {
+                success = readTrigFunction(equationInput, &customTan.A, &customTan.B, 
+                                        &customTan.C, &customTan.D, "tan");
                 if (success) showTan = true;
-            } else if (strcmp(currentFunction, "circle") == 0) {
-                success = readCircle(equationInput, &customCircle.h, &customCircle.k, &customCircle.r);
-                if (success) showCircle = true;
-            } else if (strcmp(currentFunction, "ellipse") == 0) {
-                success = readEllipse(equationInput, &customEllipse.h, &customEllipse.k, &customEllipse.a, &customEllipse.b);
-                if (success) showEllipse = true;
-            } else if (strcmp(currentFunction, "parabola") == 0) {
-                success = readParabola(equationInput, &customParabola.a, &customParabola.b, &customParabola.c);
-                if (success) showParabola = true;
-            } else if (strcmp(currentFunction, "hyperbola") == 0) {
-                success = readHyperbola(equationInput, &customHyperbola.h, &customHyperbola.k, &customHyperbola.a, &customHyperbola.b);
-                if (success) showHyperbola = true;
-            } else if (strcmp(currentFunction, "exp") == 0) {
+            }
+            else if (strcmp(currentFunction, "arcsin") == 0) {
+                success = readInverseTrigFunction(equationInput, &customASin.A, &customASin.B, 
+                                                &customASin.C, &customASin.D, funcType);
+                if (success) showASin = true;
+            }
+            else if (strcmp(currentFunction, "arccos") == 0) {
+                success = readInverseTrigFunction(equationInput, &customACos.A, &customACos.B, 
+                                                &customACos.C, &customACos.D, funcType);
+                if (success) showACos = true;
+            }
+            else if (strcmp(currentFunction, "arctan") == 0) {
+                success = readInverseTrigFunction(equationInput, &customATan.A, &customATan.B, 
+                                                &customATan.C, &customATan.D, funcType);
+                if (success) showATan = true;
+            }
+            else if (strcmp(currentFunction, "exp") == 0) {
                 success = readExponentialFunction(equationInput, &customExp.A, &customExp.B, &customExp.C, &customExp.D);
                 if (success) showExp = true;
-            } else if (strcmp(currentFunction, "log") == 0) {
+            }
+            else if (strcmp(currentFunction, "log") == 0) {
                 success = readLogFunction(equationInput, &customLog.A, &customLog.B, &customLog.C, &customLog.D, "log");
                 if (success) showLog = true;
-            } else if (strcmp(currentFunction, "ln") == 0) {
+            }
+            else if (strcmp(currentFunction, "ln") == 0) {
                 success = readLogFunction(equationInput, &customLn.A, &customLn.B, &customLn.C, &customLn.D, "ln");
                 if (success) showLn = true;
-            } else if (strcmp(currentFunction, "inverse_trig") == 0) {
-                // Prompt user to specify which inverse trig function
-                // For simplicity, let's assume it's arcsin
-                success = readInverseTrigFunction(equationInput, &customASin.A, &customASin.B, &customASin.C, &customASin.D, "arcsin");
-                if (success) showASin = true;
+            }
+            else if (strcmp(currentFunction, "poly") == 0) {
+                success = readPolynomial(equationInput, &customPoly.a4, &customPoly.a3, &customPoly.a2, &customPoly.a1, &customPoly.a0);
+                if (success) showPoly = true;
+            }
+            else if (strcmp(currentFunction, "circle") == 0) {
+                success = readCircle(equationInput, &customCircle.h, &customCircle.k, &customCircle.r);
+                if (success) showCircle = true;
+            }
+            else if (strcmp(currentFunction, "ellipse") == 0) {
+                success = readEllipse(equationInput, &customEllipse.h, &customEllipse.k, &customEllipse.a, &customEllipse.b);
+                if (success) showEllipse = true;
+            }
+            else if (strcmp(currentFunction, "parabola") == 0) {
+                success = readParabola(equationInput, &customParabola.a, &customParabola.b, &customParabola.c);
+                if (success) showParabola = true;
+            }
+            else if (strcmp(currentFunction, "hyperbola") == 0) {
+                success = readHyperbola(equationInput, &customHyperbola.h, &customHyperbola.k, &customHyperbola.a, &customHyperbola.b);
+                if (success) showHyperbola = true;
             }
 
             if (success) {
                 isEnteringEquation = false;
-            } else {
-                // Provide feedback to the user
-                strcpy(equationInput, "Invalid equation! Please try again.");
+                equationInput[0] = '\0';
             }
-        } else if (key == 27) { // ESC key
+            else {
+                strcpy(equationInput, "Invalid equation! Press ESC and try again.");
+            }
+        }
+        else if (key == 27) { // ESC key
             isEnteringEquation = false;
             equationInput[0] = '\0';
-        } else if (key == '\b') { // Backspace
+        }
+        else if (key == '\b') { // Backspace
             int len = strlen(equationInput);
             if (len > 0) {
                 equationInput[len - 1] = '\0';
             }
-        } else if (isprint(key) && strlen(equationInput) < MAX_INPUT_LENGTH - 1) {
+        }
+        else if (isprint(key) && strlen(equationInput) < MAX_INPUT_LENGTH - 1) {
             int len = strlen(equationInput);
             equationInput[len] = key;
             equationInput[len + 1] = '\0';
         }
-    } else {
-        switch (key) {
-        case '[':
-            if (scaleX < MAX_SCALE && scaleY < MAX_SCALE) {
-                scaleX *= 1.1;
-                scaleY *= 1.1;
-                step /= 1.1;
-            }
-            break;
-        case ']':
-            if (scaleX > MIN_SCALE && scaleY > MIN_SCALE) {
-                scaleX /= 1.1;
-                scaleY /= 1.1;
-                step *= 1.1;
-            }
-            break;
-        case 'g':
-            showGridFlag = !showGridFlag;
-            break;
-        case 'q':
-            exit(0);
-            break;
-        default:
-            break;
-        }
     }
 }
+
 
 void iMouse(int button, int state, int mx, int my) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
@@ -1255,5 +1780,6 @@ void iDraw() {
 // Main function
 int main() {
     iInitialize(WINDOW_WIDTH, WINDOW_HEIGHT, "Graph Plotter with Enhanced Functionality");
+
     return 0;
 }
