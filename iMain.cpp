@@ -486,21 +486,21 @@ int readInverseTrigFunction(const char* equation, float *A, float *B, float *C, 
 
     // Check for different inverse trig notations
     char *funcPtr = NULL;
-    if (strstr(cleanEq, "arcsin")) {
-        funcPtr = strstr(cleanEq, "arcsin");
-        strcpy(funcType, "arcsin");
+    if (strstr(cleanEq, "asin")) {
+        funcPtr = strstr(cleanEq, "asin");
+        strcpy(funcType, "asin");
     } else if (strstr(cleanEq, "asin")) {
         funcPtr = strstr(cleanEq, "asin");
         strcpy(funcType, "asin");
-    } else if (strstr(cleanEq, "arccos")) {
-        funcPtr = strstr(cleanEq, "arccos");
-        strcpy(funcType, "arccos");
     } else if (strstr(cleanEq, "acos")) {
         funcPtr = strstr(cleanEq, "acos");
         strcpy(funcType, "acos");
-    } else if (strstr(cleanEq, "arctan")) {
-        funcPtr = strstr(cleanEq, "arctan");
-        strcpy(funcType, "arctan");
+    } else if (strstr(cleanEq, "acos")) {
+        funcPtr = strstr(cleanEq, "acos");
+        strcpy(funcType, "acos");
+    } else if (strstr(cleanEq, "atan")) {
+        funcPtr = strstr(cleanEq, "atan");
+        strcpy(funcType, "atan");
     } else if (strstr(cleanEq, "atan")) {
         funcPtr = strstr(cleanEq, "atan");
         strcpy(funcType, "atan");
@@ -1326,21 +1326,21 @@ void drawUI() {
         if (showASin) {
             iSetColor(colorASin.r, colorASin.g, colorASin.b);
             char eqn[100];
-            sprintf(eqn, "arcsin: %.1f*arcsin(%.1f*x + %.1f) + %.1f", 
+            sprintf(eqn, "asin: %.1f*asin(%.1f*x + %.1f) + %.1f", 
                    customASin.A, customASin.B, customASin.C, customASin.D);
             iText(10, yPos, eqn); yPos -= 20;
         }
         if (showACos) {
             iSetColor(colorACos.r, colorACos.g, colorACos.b);
             char eqn[100];
-            sprintf(eqn, "arccos: %.1f*arccos(%.1f*x + %.1f) + %.1f", 
+            sprintf(eqn, "acos: %.1f*acos(%.1f*x + %.1f) + %.1f", 
                    customACos.A, customACos.B, customACos.C, customACos.D);
             iText(10, yPos, eqn); yPos -= 20;
         }
         if (showATan) {
             iSetColor(colorATan.r, colorATan.g, colorATan.b);
             char eqn[100];
-            sprintf(eqn, "arctan: %.1f*arctan(%.1f*x + %.1f) + %.1f", 
+            sprintf(eqn, "atan: %.1f*atan(%.1f*x + %.1f) + %.1f", 
                    customATan.A, customATan.B, customATan.C, customATan.D);
             iText(10, yPos, eqn); yPos -= 20;
         }
@@ -1509,17 +1509,17 @@ void drawUI() {
             strcpy(format, "Format: y = A*exp(B*x + C) + D");
             strcpy(example, "Example: y = 2*exp(1.5*x - 1) + 0");
         }
-        else if (strcmp(currentFunction, "arcsin") == 0) {
-            strcpy(format, "Format: y = [A]arcsin([B]x + [C]) + [D]");
-            strcpy(example, "Example: y = arcsin(x) or y = 2arcsin(0.5x) + 1");
+        else if (strcmp(currentFunction, "asin") == 0) {
+            strcpy(format, "Format: y = [A]asin([B]x + [C]) + [D]");
+            strcpy(example, "Example: y = asin(x) or y = 2asin(0.5x) + 1");
         }
-        else if (strcmp(currentFunction, "arccos") == 0) {
-            strcpy(format, "Format: y = [A]arccos([B]x + [C]) + [D]");
-            strcpy(example, "Example: y = arccos(x) or y = 2arccos(0.5x) + 1");
+        else if (strcmp(currentFunction, "acos") == 0) {
+            strcpy(format, "Format: y = [A]acos([B]x + [C]) + [D]");
+            strcpy(example, "Example: y = acos(x) or y = 2acos(0.5x) + 1");
         }
-        else if (strcmp(currentFunction, "arctan") == 0) {
-            strcpy(format, "Format: y = [A]arctan([B]x + [C]) + [D]");
-            strcpy(example, "Example: y = arctan(x) or y = 2arctan(2x) - 1");
+        else if (strcmp(currentFunction, "atan") == 0) {
+            strcpy(format, "Format: y = [A]atan([B]x + [C]) + [D]");
+            strcpy(example, "Example: y = atan(x) or y = 2atan(2x) - 1");
         }
         // Display input box with white background
         iSetColor(255, 255, 255);
@@ -1539,6 +1539,16 @@ void drawUI() {
         // Show ESC hint
         iSetColor(150, 150, 150);
         iText(WINDOW_WIDTH - 150, WINDOW_HEIGHT - 30, "Press ESC to cancel");
+
+        // Add special instructions for inverse trig menu
+        if (strcmp(currentFunction, "inverse_trig_menu") == 0) {
+            iSetColor(255, 255, 255);
+            iText(20, WINDOW_HEIGHT - 60, "1: asin");
+            iText(20, WINDOW_HEIGHT - 80, "2: acos");
+            iText(20, WINDOW_HEIGHT - 100, "3: atan");
+            iText(WINDOW_WIDTH - 150, WINDOW_HEIGHT - 30, "Press ESC to cancel");
+            return;  // Skip the rest of equation input UI
+        }
     }
 
     // Show preset menu only when active
@@ -1658,15 +1668,15 @@ void iKeyboard(unsigned char key) {
         if (strcmp(currentFunction, "inverse_trig_menu") == 0) {
             switch (key) {
                 case '1':
-                    strcpy(currentFunction, "arcsin");
+                    strcpy(currentFunction, "asin");
                     isEnteringEquation = true;
                     break;
                 case '2':
-                    strcpy(currentFunction, "arccos");
+                    strcpy(currentFunction, "acos");
                     isEnteringEquation = true;
                     break;
                 case '3':
-                    strcpy(currentFunction, "arctan");
+                    strcpy(currentFunction, "atan");
                     isEnteringEquation = true;
                     break;
                 case 27: // ESC key
@@ -1707,10 +1717,10 @@ void iKeyboard(unsigned char key) {
                     showTan = false; // Clear old graph only after successful input
                     showTan = true;  // Show new graph
                     isEnteringEquation = false;
-                    equationInput[0] = '\0';
+                    equationInput[0] = '\'\0';
                 }
             }
-            else if (strcmp(currentFunction, "arcsin") == 0) {
+            else if (strcmp(currentFunction, "asin") == 0) {
                 success = readInverseTrigFunction(equationInput, &customASin.A, &customASin.B, 
                                                 &customASin.C, &customASin.D, funcType);
                 if (success) {
@@ -1720,7 +1730,7 @@ void iKeyboard(unsigned char key) {
                     equationInput[0] = '\0';
                 }
             }
-            else if (strcmp(currentFunction, "arccos") == 0) {
+            else if (strcmp(currentFunction, "acos") == 0) {
                 success = readInverseTrigFunction(equationInput, &customACos.A, &customACos.B, 
                                                 &customACos.C, &customACos.D, funcType);
                 if (success) {
@@ -1730,7 +1740,7 @@ void iKeyboard(unsigned char key) {
                     equationInput[0] = '\0';
                 }
             }
-            else if (strcmp(currentFunction, "arctan") == 0) {
+            else if (strcmp(currentFunction, "atan") == 0) {
                 success = readInverseTrigFunction(equationInput, &customATan.A, &customATan.B, 
                                                 &customATan.C, &customATan.D, funcType);
                 if (success) {
