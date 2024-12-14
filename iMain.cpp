@@ -131,6 +131,111 @@ typedef struct {
     float A, B, C, D; // For y = A * log(B * x + C) + D
 } LogFunction;
 
+// After Color structure definition
+typedef struct {
+    char name[32];
+    Color colors[14];  // One color for each function type
+} ColorPreset;
+
+#define NUM_PRESETS 5
+ColorPreset colorPresets[NUM_PRESETS] = {
+    {
+        "Classic", {
+            {0, 0, 255},      // Sin - Blue
+            {255, 0, 0},      // Cos - Red
+            {0, 255, 0},      // Tan - Green
+            {255, 128, 128},  // ASin - Light Red
+            {128, 128, 255},  // ACos - Light Blue
+            {128, 255, 128},  // ATan - Light Green
+            {255, 165, 0},    // Exp - Orange
+            {255, 20, 147},   // Log - Deep Pink
+            {75, 0, 130},     // Ln - Indigo
+            {255, 128, 0},    // Poly - Orange
+            {255, 0, 255},    // Circle - Magenta
+            {0, 255, 255},    // Ellipse - Cyan
+            {128, 0, 128},    // Parabola - Purple
+            {255, 255, 0}     // Hyperbola - Yellow
+        }
+    },
+    {
+        "Neon", {
+            {0, 255, 247},    // Sin - Neon Blue
+            {255, 0, 247},    // Cos - Neon Pink
+            {247, 255, 0},    // Tan - Neon Yellow
+            {0, 255, 128},    // ASin - Neon Green
+            {255, 128, 0},    // ACos - Neon Orange
+            {128, 0, 255},    // ATan - Neon Purple
+            {255, 0, 128},    // Exp - Neon Red
+            {0, 255, 0},      // Log - Neon Lime
+            {0, 128, 255},    // Ln - Neon Sky
+            {255, 0, 0},      // Poly - Bright Red
+            {0, 255, 255},    // Circle - Cyan
+            {255, 255, 0},    // Ellipse - Yellow
+            {255, 0, 255},    // Parabola - Magenta
+            {0, 255, 128}     // Hyperbola - Spring Green
+        }
+    },
+    {
+        "Pastel", {
+            {173, 216, 230},  // Sin - Light Blue
+            {255, 182, 193},  // Cos - Light Pink
+            {144, 238, 144},  // Tan - Light Green
+            {221, 160, 221},  // ASin - Plum
+            {176, 224, 230},  // ACos - Powder Blue
+            {255, 218, 185},  // ATan - Peach
+            {255, 192, 203},  // Exp - Pink
+            {230, 230, 250},  // Log - Lavender
+            {216, 191, 216},  // Ln - Thistle
+            {240, 230, 140},  // Poly - Khaki
+            {255, 228, 225},  // Circle - Misty Rose
+            {176, 196, 222},  // Ellipse - Light Steel Blue
+            {255, 240, 245},  // Parabola - Lavender Blush
+            {245, 255, 250}   // Hyperbola - Mint Cream
+        }
+    },
+    {
+        "Monochrome", {
+            {255, 255, 255},  // All white with different opacity
+            {230, 230, 230},
+            {200, 200, 200},
+            {180, 180, 180},
+            {160, 160, 160},
+            {140, 140, 140},
+            {120, 120, 120},
+            {100, 100, 100},
+            {80, 80, 80},
+            {60, 60, 60},
+            {40, 40, 40},
+            {20, 20, 20},
+            {10, 10, 10},
+            {5, 5, 5}
+        }
+    },
+    {
+        "Dark", {
+            {139, 0, 0},      // Dark Red
+            {0, 100, 0},      // Dark Green
+            {0, 0, 139},      // Dark Blue
+            {139, 0, 139},    // Dark Magenta
+            {0, 139, 139},    // Dark Cyan
+            {139, 69, 19},    // Saddle Brown
+            {72, 61, 139},    // Dark Slate Blue
+            {85, 107, 47},    // Dark Olive Green
+            {139, 69, 0},     // Dark Orange
+            {128, 0, 0},      // Maroon
+            {0, 0, 128},      // Navy
+            {128, 0, 128},    // Purple
+            {128, 128, 0},    // Olive
+            {70, 130, 180}    // Steel Blue
+        }
+    }
+};
+
+// Add global variable for current preset
+int currentPreset = 0;
+bool showPresetMenu = false;
+
+
 // Structure Instances
 TrigFunction customSin = {1.0, 1.0, 0.0, 0.0};
 TrigFunction customCos = {1.0, 1.0, 0.0, 0.0};
@@ -164,6 +269,28 @@ Color colorParabola = {128, 0, 128};   // Purple
 Color colorHyperbola = {255, 255, 0};  // Yellow
 
 // Helper Functions
+
+// Add function to apply color preset
+void applyColorPreset(int presetIndex) {
+    if (presetIndex < 0 || presetIndex >= NUM_PRESETS) return;
+    
+    colorSin = colorPresets[presetIndex].colors[0];
+    colorCos = colorPresets[presetIndex].colors[1];
+    colorTan = colorPresets[presetIndex].colors[2];
+    colorASin = colorPresets[presetIndex].colors[3];
+    colorACos = colorPresets[presetIndex].colors[4];
+    colorATan = colorPresets[presetIndex].colors[5];
+    colorExp = colorPresets[presetIndex].colors[6];
+    colorLog = colorPresets[presetIndex].colors[7];
+    colorLn = colorPresets[presetIndex].colors[8];
+    colorPoly = colorPresets[presetIndex].colors[9];
+    colorCircle = colorPresets[presetIndex].colors[10];
+    colorEllipse = colorPresets[presetIndex].colors[11];
+    colorParabola = colorPresets[presetIndex].colors[12];
+    colorHyperbola = colorPresets[presetIndex].colors[13];
+}
+
+
 void removeWhitespaces(char *str) {
     char *i = str;
     char *j = str;
@@ -1314,6 +1441,23 @@ void drawUI() {
         }
     }
 
+    // Add color preset menu
+    if (showPresetMenu) {
+        iSetColor(0, 0, 0);
+        iFilledRectangle(WINDOW_WIDTH - 200, WINDOW_HEIGHT - 200, 190, 190);
+        iSetColor(255, 255, 255);
+        iText(WINDOW_WIDTH - 190, WINDOW_HEIGHT - 30, "Color Presets (0-4):");
+        for (int i = 0; i < NUM_PRESETS; i++) {
+            char presetText[50];
+            sprintf(presetText, "%d: %s", i, colorPresets[i].name);
+            iText(WINDOW_WIDTH - 190, WINDOW_HEIGHT - 60 - (i * 20), presetText);
+        }
+        iText(WINDOW_WIDTH - 190, WINDOW_HEIGHT - 180, "Press ESC to close");
+    }
+
+    // Add preset menu hint
+    iSetColor(255, 255, 255);
+    iText(10, 220, "Press 'p' for color presets");
 
     // Show current equations
     int yPos = 220;
@@ -1457,6 +1601,21 @@ void testFunctionParsing() {
 }
 
 void iKeyboard(unsigned char key) {
+    // Add at the beginning of the iKeyboard function
+    bool isWaitingForInput = isSettingColor || isEnteringEquation || showPresetMenu;
+
+    // Handle preset menu first
+    if (showPresetMenu) {
+        if (key >= '0' && key <= '4') {
+            applyColorPreset(key - '0');
+            showPresetMenu = false;
+        } else if (key == 27) { // ESC
+            showPresetMenu = false;
+        }
+        return;
+    }
+
+    // Handle color setting input
     if (isSettingColor) {
         if (key == '\r') { // Enter key
             if (inputStep == 0) {
@@ -1512,132 +1671,35 @@ void iKeyboard(unsigned char key) {
             inputBuffer[len] = key;
             inputBuffer[len + 1] = '\0';
         }
+        return;  // Early return to prevent other handlers
     }
-    else {
-        if (key == 'c') { // 'c' to initiate color setting
-            isSettingColor = true;
-            inputStep = 0;
-            inputBuffer[0] = '\0';
-            selectedFunction[0] = '\0';
+
+    // Handle equation input
+    if (isEnteringEquation) {
+        if (strcmp(currentFunction, "inverse_trig_menu") == 0) {
+            switch (key) {
+                case '1':
+                    strcpy(currentFunction, "arcsin");
+                    showASin = false;
+                    isEnteringEquation = true;
+                    break;
+                case '2':
+                    strcpy(currentFunction, "arccos");
+                    showACos = false;
+                    isEnteringEquation = true;
+                    break;
+                case '3':
+                    strcpy(currentFunction, "arctan");
+                    showATan = false;
+                    isEnteringEquation = true;
+                    break;
+                case 27: // ESC key
+                    isEnteringEquation = false;
+                    break;
+            }
             return;
         }
-    }
-    if (!isEnteringEquation) {
-        switch (key) {
-            case '1': 
-                strcpy(currentFunction, "sin"); 
-                showSin = false; 
-                isEnteringEquation = true;
-                break;
-            case '2': 
-                strcpy(currentFunction, "cos"); 
-                showCos = false; 
-                isEnteringEquation = true;
-                break;
-            case '3': 
-                strcpy(currentFunction, "tan"); 
-                showTan = false; 
-                isEnteringEquation = true;
-                break;
-            case '4': 
-                strcpy(currentFunction, "poly"); 
-                showPoly = false; 
-                isEnteringEquation = true;
-                break;
-            case '5': 
-                strcpy(currentFunction, "circle"); 
-                showCircle = false; 
-                isEnteringEquation = true;
-                break;
-            case '6': 
-                strcpy(currentFunction, "ellipse"); 
-                showEllipse = false; 
-                isEnteringEquation = true;
-                break;
-            case '7': 
-                strcpy(currentFunction, "parabola"); 
-                showParabola = false; 
-                isEnteringEquation = true;
-                break;
-            case '8': 
-                strcpy(currentFunction, "hyperbola"); 
-                showHyperbola = false; 
-                isEnteringEquation = true;
-                break;
-            case '9': 
-                strcpy(currentFunction, "exp"); 
-                showExp = false; 
-                isEnteringEquation = true;
-                break;
-            case '0': 
-                strcpy(currentFunction, "log"); 
-                showLog = false; 
-                isEnteringEquation = true;
-                break;
-            case '-': 
-                strcpy(currentFunction, "ln"); 
-                showLn = false; 
-                isEnteringEquation = true;
-                break;
-            case '=': 
-                // Show inverse trig menu
-                strcpy(currentFunction, "inverse_trig_menu");
-                isEnteringEquation = true;  // Set this to true so the menu can be processed
-                equationInput[0] = '\0';    // Clear any existing input
-                break;
-            case 'c': 
-                isSettingColor = true;
-                inputStep = 0;
-                inputBuffer[0] = '\0';
-                selectedFunction[0] = '\0';
-                break;
-            case 'g':
-                showGridFlag = !showGridFlag;
-                break;
-            case '[':
-                if (scaleX < MAX_SCALE && scaleY < MAX_SCALE) {
-                    scaleX *= 1.1;
-                    scaleY *= 1.1;
-                    step /= 1.1;
-                }
-                break;
-            case ']':
-                if (scaleX > MIN_SCALE && scaleY > MIN_SCALE) {
-                    scaleX /= 1.1;
-                    scaleY /= 1.1;
-                    step *= 1.1;
-                }
-                break;
-            case 'q':
-                exit(0);
-                break;
-        }
-    }
-    // Handle inverse trig menu selection
-    else if (strcmp(currentFunction, "inverse_trig_menu") == 0) {
-        switch (key) {
-            case '1':
-                strcpy(currentFunction, "arcsin");
-                showASin = false;
-                isEnteringEquation = true;
-                break;
-            case '2':
-                strcpy(currentFunction, "arccos");
-                showACos = false;
-                isEnteringEquation = true;
-                break;
-            case '3':
-                strcpy(currentFunction, "arctan");
-                showATan = false;
-                isEnteringEquation = true;
-                break;
-            case 27: // ESC key
-                isEnteringEquation = false;
-                break;
-        }
-    }
-    // Handle equation input
-    else if (isEnteringEquation) {
+
         if (key == '\r') { // Enter key
             bool success = false;
             char funcType[20] = "";
@@ -1728,9 +1790,108 @@ void iKeyboard(unsigned char key) {
             equationInput[len] = key;
             equationInput[len + 1] = '\0';
         }
+        return;  // Early return to prevent other handlers
+    }
+
+    // Only handle general commands if not waiting for any input
+    if (!isWaitingForInput) {
+        switch (key) {
+            case '1': 
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+            case '0':
+            case '-':
+            case '=':
+                // ...existing equation selection code...
+                if (key == '1') {
+                    strcpy(currentFunction, "sin"); 
+                    showSin = false; 
+                    isEnteringEquation = true;
+                } else if (key == '2') {
+                    strcpy(currentFunction, "cos"); 
+                    showCos = false; 
+                    isEnteringEquation = true;
+                } else if (key == '3') {
+                    strcpy(currentFunction, "tan"); 
+                    showTan = false; 
+                    isEnteringEquation = true;
+                } else if (key == '4') {
+                    strcpy(currentFunction, "poly"); 
+                    showPoly = false; 
+                    isEnteringEquation = true;
+                } else if (key == '5') {
+                    strcpy(currentFunction, "circle"); 
+                    showCircle = false; 
+                    isEnteringEquation = true;
+                } else if (key == '6') {
+                    strcpy(currentFunction, "ellipse"); 
+                    showEllipse = false; 
+                    isEnteringEquation = true;
+                } else if (key == '7') {
+                    strcpy(currentFunction, "parabola"); 
+                    showParabola = false; 
+                    isEnteringEquation = true;
+                } else if (key == '8') {
+                    strcpy(currentFunction, "hyperbola"); 
+                    showHyperbola = false; 
+                    isEnteringEquation = true;
+                } else if (key == '9') {
+                    strcpy(currentFunction, "exp"); 
+                    showExp = false; 
+                    isEnteringEquation = true;
+                } else if (key == '0') {
+                    strcpy(currentFunction, "log"); 
+                    showLog = false; 
+                    isEnteringEquation = true;
+                } else if (key == '-') {
+                    strcpy(currentFunction, "ln"); 
+                    showLn = false; 
+                    isEnteringEquation = true;
+                } else if (key == '=') {
+                    // Show inverse trig menu
+                    strcpy(currentFunction, "inverse_trig_menu");
+                    isEnteringEquation = true;  // Set this to true so the menu can be processed
+                    equationInput[0] = '\0';    // Clear any existing input
+                }
+                break;
+            case 'c': 
+                isSettingColor = true;
+                inputStep = 0;
+                inputBuffer[0] = '\0';
+                selectedFunction[0] = '\0';
+                break;
+            case 'p':
+                showPresetMenu = true;
+                break;
+            case 'g':
+                showGridFlag = !showGridFlag;
+                break;
+            case '[':
+                if (scaleX < MAX_SCALE && scaleY < MAX_SCALE) {
+                    scaleX *= 1.1;
+                    scaleY *= 1.1;
+                    step /= 1.1;
+                }
+                break;
+            case ']':
+                if (scaleX > MIN_SCALE && scaleY > MIN_SCALE) {
+                    scaleX /= 1.1;
+                    scaleY /= 1.1;
+                    step *= 1.1;
+                }
+                break;
+            case 'q':
+                exit(0);
+                break;
+        }
     }
 }
-
 
 void iMouse(int button, int state, int mx, int my) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
