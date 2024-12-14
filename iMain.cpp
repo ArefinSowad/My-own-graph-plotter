@@ -68,7 +68,7 @@ bool showCircle = false;
 bool showEllipse = false;
 bool showParabola = false;
 bool showHyperbola = false;
-
+bool showHelpScreen = false;
 bool isSettingColor = false;
 bool showGridFlag = true;
 bool isEnteringEquation = false;
@@ -1288,75 +1288,80 @@ void plotFunctions() {
 }
 
 void drawUI() {
-    iSetColor(255, 255, 255);
-    iText(10, 580, "Function Keys:");
-    iText(10, 560, "'1' - Sine:          y = A*sin(B*x + C) + D");
-    iText(10, 540, "'2' - Cosine:        y = A*cos(B*x + C) + D");
-    iText(10, 520, "'3' - Tangent:       y = A*tan(B*x + C) + D");
-    iText(10, 500, "'4' - Polynomial:    y = ax^4 + bx^3 + cx^2 + dx + e");
-    iText(10, 480, "'5' - Circle:        (x-h)^2 + (y-k)^2 = r^2");
-    iText(10, 460, "'6' - Ellipse:       ((x-h)^2)/a^2 + ((y-k)^2)/b^2 = 1");
-    iText(10, 440, "'7' - Parabola:      y = ax^2 + bx + c");
-    iText(10, 420, "'8' - Hyperbola:     ((x-h)^2)/a^2 - ((y-k)^2)/b^2 = 1");
-    iText(10, 400, "'9' - Exponential:   y = A*exp(B*x + C) + D");
-    iText(10, 380, "'0' - Logarithm:     y = A*log(B*x + C) + D");
-    iText(10, 360, "'-' - Natural Log:   y = A*ln(B*x + C) + D");
-    iText(10, 340, "'=' - Inverse Trig:  y = A*arcsin(B*x + C) + D");
-
-    iText(10, 320, "'[' and ']' - Zoom in/out");
-    iText(10, 300, "Arrow keys - Pan graph");
-    iText(10, 280, "'g' - Toggle grid");
-    iText(10, 260, "'q' - Exit");
-
-    char zoomText[50];
-    sprintf(zoomText, "Zoom: %.2f", scaleX);
-    iText(10, 240, zoomText);
-
-    // Add color setting instructions
-    if (isSettingColor) {
-        iSetColor(255, 255, 255); // White text
-        if (inputStep == 0) {
-            iText(200, 500, "Enter function name (sin, cos, tan, asin, acos, atan, exp, log, ln, poly, circle, ellipse, parabola, hyperbola):");
-        }
-        else if (inputStep == 1) {
-            iText(200, 480, "Enter Red value (0-255):");
-        }
-        else if (inputStep == 2) {
-            iText(200, 460, "Enter Green value (0-255):");
-        }
-        else if (inputStep == 3) {
-            iText(200, 440, "Enter Blue value (0-255):");
-        }
-        // Display the input buffer
-        iSetColor(200, 200, 200); // Light gray background for input
-        iFilledRectangle(200, 420, 400, 30);
-        iSetColor(0, 0, 0); // Black text
-        iText(210, 430, inputBuffer);
+    // Only show basic instructions when no special mode is active
+    if (!isSettingColor && !isEnteringEquation && !showPresetMenu) {
+        iSetColor(255, 255, 255);
+        // Show minimal help text
+        iText(10, WINDOW_HEIGHT - 20, "Press 'h' for help | 'p' for presets | 'c' for colors | 1-9,0,-,= for functions");
+        
+        char zoomText[50];
+        sprintf(zoomText, "Zoom: %.2f", scaleX);
+        iText(10, WINDOW_HEIGHT - 40, zoomText);
     }
 
-    if (isEnteringEquation) {
-        iSetColor(200, 200, 200);
-        iFilledRectangle(200, 500, 400, 30);
+    // Show help screen when activated
+    if (showHelpScreen) {
+        // Dark background
         iSetColor(0, 0, 0);
-        iText(210, 510, equationInput);
-
+        iFilledRectangle(50, 50, WINDOW_WIDTH-100, WINDOW_HEIGHT-100);
+        // Border
+        iSetColor(100, 100, 100);
+        iRectangle(50, 50, WINDOW_WIDTH-100, WINDOW_HEIGHT-100);
+        
         iSetColor(255, 255, 255);
-        char instructions[200];
-        sprintf(instructions, "Enter equation for %s function and press Enter.", currentFunction);
-        iText(200, 540, instructions);
+        iText(60, WINDOW_HEIGHT-120, "Function Keys:");
+        iText(60, WINDOW_HEIGHT-140, "1-3: Trig functions (sin, cos, tan)");
+        iText(60, WINDOW_HEIGHT-160, "4: Polynomial | 5: Circle | 6: Ellipse");
+        iText(60, WINDOW_HEIGHT-180, "7: Parabola | 8: Hyperbola | 9: Exponential");
+        iText(60, WINDOW_HEIGHT-200, "0: Logarithm | -: Natural Log | =: Inverse Trig");
+        iText(60, WINDOW_HEIGHT-240, "Controls:");
+        iText(60, WINDOW_HEIGHT-260, "[,]: Zoom | Arrows/Mouse: Pan | g: Toggle grid");
+        iText(60, WINDOW_HEIGHT-300, "Press 'h' to close help");
+    }
 
-        // Display Format and Example
-        iSetColor(150, 150, 150); // Light gray for format text
+    // Show color setting UI only when active
+    if (isSettingColor) {
+        // Dark background
+        iSetColor(0, 0, 0);
+        iFilledRectangle(WINDOW_WIDTH/4, WINDOW_HEIGHT/4, WINDOW_WIDTH/2, WINDOW_HEIGHT/2);
+        // Border
+        iSetColor(100, 100, 100);
+        iRectangle(WINDOW_WIDTH/4, WINDOW_HEIGHT/4, WINDOW_WIDTH/2, WINDOW_HEIGHT/2);
+        
+        iSetColor(255, 255, 255);
+        if (inputStep == 0) {
+            iText(WINDOW_WIDTH/4 + 20, WINDOW_HEIGHT/2, "Enter function name:");
+            iText(WINDOW_WIDTH/4 + 20, WINDOW_HEIGHT/2 - 30, "(sin/cos/tan/poly/circle/etc)");
+        } else {
+            char prompt[50];
+            sprintf(prompt, "Enter %s value (0-255):", inputStep == 1 ? "Red" : (inputStep == 2 ? "Green" : "Blue"));
+            iText(WINDOW_WIDTH/4 + 20, WINDOW_HEIGHT/2, prompt);
+        }
+        
+        // Display input box with white background
+        iSetColor(255, 255, 255);
+        iFilledRectangle(WINDOW_WIDTH/4 + 20, WINDOW_HEIGHT/2 - 60, WINDOW_WIDTH/4, 30);
+        iSetColor(0, 0, 0);
+        iText(WINDOW_WIDTH/4 + 25, WINDOW_HEIGHT/2 - 50, inputBuffer);
+    }
+
+    // Show equation input UI only when active
+    if (isEnteringEquation) {
+        // Dark background for top bar
+        iSetColor(0, 0, 0);
+        iFilledRectangle(0, WINDOW_HEIGHT - 100, WINDOW_WIDTH, 100);
+        // Border
+        iSetColor(100, 100, 100);
+        iRectangle(0, WINDOW_HEIGHT - 100, WINDOW_WIDTH, 100);
+        
+        iSetColor(255, 255, 255);
+        char instructions[100];
+        sprintf(instructions, "Enter %s equation:", currentFunction);
+        iText(20, WINDOW_HEIGHT - 30, instructions);
+        
+        // Show format hint
         char format[100] = "";
         char example[100] = "";
-        if (strcmp(currentFunction, "inverse_trig_menu") == 0) {
-            iSetColor(255, 255, 255);
-            iText(200, 560, "Choose inverse trig function:");
-            iText(200, 540, "1 - arcsin");
-            iText(200, 520, "2 - arccos");
-            iText(200, 500, "3 - arctan");
-            iText(200, 480, "Press ESC to cancel");
-        }
         if (strcmp(currentFunction, "sin") == 0) {
             strcpy(format, "Format: y = A*sin(B*x + C) + D");
             strcpy(example, "Example: y = 2*sin(1.5*x + 0.5) + 1");
@@ -1401,8 +1406,6 @@ void drawUI() {
             strcpy(format, "Format: y = A*exp(B*x + C) + D");
             strcpy(example, "Example: y = 2*exp(1.5*x - 1) + 0");
         }
-
-
         else if (strcmp(currentFunction, "arcsin") == 0) {
             strcpy(format, "Format: y = [A]arcsin([B]x + [C]) + [D]");
             strcpy(example, "Example: y = arcsin(x) or y = 2arcsin(0.5x) + 1");
@@ -1415,193 +1418,48 @@ void drawUI() {
             strcpy(format, "Format: y = [A]arctan([B]x + [C]) + [D]");
             strcpy(example, "Example: y = arctan(x) or y = 2arctan(2x) - 1");
         }
+        // Display input box with white background
+        iSetColor(255, 255, 255);
+        iFilledRectangle(207, WINDOW_HEIGHT - 95, WINDOW_WIDTH/3 + 120, 40);
 
-        // Display format and example
-        iText(200, 520, format);
-        iText(200, 500, example);
 
-        // Add explanation of parameters
-        iSetColor(200, 200, 200);
-        if (strstr(currentFunction, "sin") || strstr(currentFunction, "cos") || 
-            strstr(currentFunction, "tan") || strcmp(currentFunction, "exp") == 0 || 
-            strcmp(currentFunction, "log") == 0 || strcmp(currentFunction, "ln") == 0) {
-            iText(200, 480, "A = amplitude, B = frequency/scale, C = phase/shift, D = vertical shift");
+        if (format[0] != '\0') {
+            iSetColor(255, 255, 255);
+            iText(20, WINDOW_HEIGHT - 50, format);
+            iSetColor(150, 150, 150);
+            iText(210, WINDOW_HEIGHT - 70, example);
         }
-        else if (strcmp(currentFunction, "circle") == 0) {
-            iText(200, 480, "h,k = center coordinates, r = radius");
-        }
-        else if (strcmp(currentFunction, "ellipse") == 0 || strcmp(currentFunction, "hyperbola") == 0) {
-            iText(200, 480, "h,k = center coordinates, a,b = semi-major/minor axes");
-        }
-        else if (strcmp(currentFunction, "parabola") == 0) {
-            iText(200, 480, "a = vertical stretch, b = horizontal shift, c = vertical shift");
-        }
-        else if (strcmp(currentFunction, "poly") == 0) {
-            iText(200, 480, "Enter coefficients for each power of x (use 0 for missing terms)");
-        }
+        
+        iSetColor(0, 0, 0);
+        iText(210, WINDOW_HEIGHT - 90, equationInput);
+
+        // Show ESC hint
+        iSetColor(150, 150, 150);
+        iText(WINDOW_WIDTH - 150, WINDOW_HEIGHT - 30, "Press ESC to cancel");
     }
 
-    // Add color preset menu
+    // Show preset menu only when active
     if (showPresetMenu) {
+        // Dark background
         iSetColor(0, 0, 0);
-        iFilledRectangle(WINDOW_WIDTH - 200, WINDOW_HEIGHT - 200, 190, 190);
+        iFilledRectangle(WINDOW_WIDTH - 220, WINDOW_HEIGHT - 220, 200, 200);
+        // Border
+        iSetColor(100, 100, 100);
+        iRectangle(WINDOW_WIDTH - 220, WINDOW_HEIGHT - 220, 200, 200);
+        
         iSetColor(255, 255, 255);
-        iText(WINDOW_WIDTH - 190, WINDOW_HEIGHT - 30, "Color Presets (0-4):");
+        iText(WINDOW_WIDTH - 210, WINDOW_HEIGHT - 40, "Color Presets (0-4):");
         for (int i = 0; i < NUM_PRESETS; i++) {
             char presetText[50];
             sprintf(presetText, "%d: %s", i, colorPresets[i].name);
-            iText(WINDOW_WIDTH - 190, WINDOW_HEIGHT - 60 - (i * 20), presetText);
+            iText(WINDOW_WIDTH - 210, WINDOW_HEIGHT - 70 - (i * 20), presetText);
         }
-        iText(WINDOW_WIDTH - 190, WINDOW_HEIGHT - 180, "Press ESC to close");
+        iText(WINDOW_WIDTH - 210, WINDOW_HEIGHT - 200, "ESC to close");
     }
-
-    // Add preset menu hint
-    iSetColor(255, 255, 255);
-    iText(10, 220, "Press 'p' for color presets");
-
-    // Show current equations
-    int yPos = 220;
-    if (showSin) {
-        char eqText[100];
-        sprintf(eqText, "Sin: y = %.2f*sin(%.2f*x + %.2f) + %.2f", customSin.A, customSin.B, customSin.C, customSin.D);
-        sprintf(eqText, "Sin Color: R=%.0f G=%.0f B=%.0f", colorSin.r, colorSin.g, colorSin.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showCos) {
-        char eqText[100];
-        sprintf(eqText, "Cos: y = %.2f*cos(%.2f*x + %.2f) + %.2f", customCos.A, customCos.B, customCos.C, customCos.D);
-        sprintf(eqText, "Cos Color: R=%.0f G=%.0f B=%.0f", colorCos.r, colorCos.g, colorCos.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showTan) {
-        char eqText[100];
-        sprintf(eqText, "Tan: y = %.2f*tan(%.2f*x + %.2f) + %.2f", customTan.A, customTan.B, customTan.C, customTan.D);
-        sprintf(eqText, "Tan Color: R=%.0f G=%.0f B=%.0f", colorTan.r, colorTan.g, colorTan.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showASin) {
-        char eqText[100];
-        sprintf(eqText, "Arcsin: y = %.2f*arcsin(%.2f*x + %.2f) + %.2f", customASin.A, customASin.B, customASin.C, customASin.D);
-        sprintf(eqText, "ASin Color: R=%.0f G=%.0f B=%.0f", colorASin.r, colorASin.g, colorASin.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showACos) {
-        char eqText[100];
-        sprintf(eqText, "Arccos: y = %.2f*arccos(%.2f*x + %.2f) + %.2f", customACos.A, customACos.B, customACos.C, customACos.D);
-        sprintf(eqText, "ACos Color: R=%.0f G=%.0f B=%.0f", colorACos.r, colorACos.g, colorACos.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showATan) {
-        char eqText[100];
-        sprintf(eqText, "Arctan: y = %.2f*arctan(%.2f*x + %.2f) + %.2f", customATan.A, customATan.B, customATan.C, customATan.D);
-        sprintf(eqText, "ATan Color: R=%.0f G=%.0f B=%.0f", colorATan.r, colorATan.g, colorATan.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showExp) {
-        char eqText[100];
-        sprintf(eqText, "Exp: y = %.2f*exp(%.2f*x + %.2f) + %.2f", customExp.A, customExp.B, customExp.C, customExp.D);
-        sprintf(eqText, "Exponential Color: R=%.0f G=%.0f B=%.0f", colorExp.r, colorExp.g, colorExp.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showLog) {
-        char eqText[100];
-        sprintf(eqText, "Log: y = %.2f*log(%.2f*x + %.2f) + %.2f", customLog.A, customLog.B, customLog.C, customLog.D);
-        sprintf(eqText, "Logarithm Color: R=%.0f G=%.0f B=%.0f", colorLog.r, colorLog.g, colorLog.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showLn) {
-        char eqText[100];
-        sprintf(eqText, "Ln: y = %.2f*ln(%.2f*x + %.2f) + %.2f", customLn.A, customLn.B, customLn.C, customLn.D);
-        sprintf(eqText, "Natural Log Color: R=%.0f G=%.0f B=%.0f", colorLn.r, colorLn.g, colorLn.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showPoly) {
-        char eqText[200];
-        sprintf(eqText, "Poly: y = %.2fx^4 + %.2fx^3 + %.2fx^2 + %.2fx + %.2f",
-            customPoly.a4, customPoly.a3, customPoly.a2, customPoly.a1, customPoly.a0);
-        sprintf(eqText, "Polynomial Color: R=%.0f G=%.0f B=%.0f", colorPoly.r, colorPoly.g, colorPoly.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showCircle) {
-        char eqText[100];
-        sprintf(eqText, "Circle: (x - %.2f)^2 + (y - %.2f)^2 = %.2f^2", customCircle.h, customCircle.k, customCircle.r);
-        sprintf(eqText, "Circle Color: R=%.0f G=%.0f B=%.0f", colorCircle.r, colorCircle.g, colorCircle.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showEllipse) {
-        char eqText[100];
-        sprintf(eqText, "Ellipses: ((x - %.2f)^2)/%.2f^2 + ((y - %.2f)^2)/%.2f^2 = 1", customEllipse.h, customEllipse.a, customEllipse.k, customEllipse.b);
-        sprintf(eqText, "Ellipse Color: R=%.0f G=%.0f B=%.0f", colorEllipse.r, colorEllipse.g, colorEllipse.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showParabola) {
-        char eqText[100];
-        sprintf(eqText, "Parabola: y = %.2fx^2 + %.2fx + %.2f", customParabola.a, customParabola.b, customParabola.c);
-        sprintf(eqText, "Parabola Color: R=%.0f G=%.0f B=%.0f", colorParabola.r, colorParabola.g, colorParabola.b);
-        iText(10, yPos, eqText);
-        yPos -= 20;
-    }
-    if (showHyperbola) {
-        char eqText[100];
-        sprintf(eqText, "Hyperbola: ((x - %.2f)^2)/%.2f^2 - ((y - %.2f)^2)/%.2f^2 = 1", customHyperbola.h, customHyperbola.a, customHyperbola.k, customHyperbola.b);
-        sprintf(eqText, "Hyperbola Color: R=%.0f G=%.0f B=%.0f", colorHyperbola.r, colorHyperbola.g, colorHyperbola.b);
-        iText(10, yPos, eqText);
-    }
-}
-
-void testFunctionParsing() {
-    float A, B, C, D;
-    float a4, a3, a2, a1, a0;
-
-    // Test trig functions
-    printf("\nTesting Trig Functions:\n");
-    readTrigFunction("y = sin(x)", &A, &B, &C, &D, "sin");
-    printf("sin(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-    
-    readTrigFunction("y = sin(x) - 5", &A, &B, &C, &D, "sin");
-    printf("sin(x) - 5: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-
-    // Test exponential
-    printf("\nTesting Exponential:\n");
-    readExponentialFunction("y = exp(x)", &A, &B, &C, &D);
-    printf("exp(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-    
-    readExponentialFunction("y = exp(x) - 2", &A, &B, &C, &D);
-    printf("exp(x) - 2: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-
-    // Test logarithmic
-    printf("\nTesting Logarithmic:\n");
-    readLogFunction("y = ln(x)", &A, &B, &C, &D, "ln");
-    printf("ln(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-    
-    readLogFunction("y = ln(x) - 3", &A, &B, &C, &D, "ln");
-    printf("ln(x) - 3: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-
-    // Test polynomial
-    printf("\nTesting Polynomial:\n");
-    readPolynomial("y = x^2", &a4, &a3, &a2, &a1, &a0);
-    printf("x^2: a4=%.1f, a3=%.1f, a2=%.1f, a1=%.1f, a0=%.1f\n", 
-           a4, a3, a2, a1, a0);
-    
-    readPolynomial("y = x^2 - 2x + 1", &a4, &a3, &a2, &a1, &a0);
-    printf("x^2 - 2x + 1: a4=%.1f, a3=%.1f, a2=%.1f, a1=%.1f, a0=%.1f\n", 
-           a4, a3, a2, a1, a0);
 }
 
 void iKeyboard(unsigned char key) {
-    // Add at the beginning of the iKeyboard function
+
     bool isWaitingForInput = isSettingColor || isEnteringEquation || showPresetMenu;
 
     // Handle preset menu first
@@ -1796,6 +1654,9 @@ void iKeyboard(unsigned char key) {
     // Only handle general commands if not waiting for any input
     if (!isWaitingForInput) {
         switch (key) {
+            case 'h':
+                showHelpScreen = !showHelpScreen;
+                break;
             case '1': 
             case '2':
             case '3':
@@ -1891,6 +1752,45 @@ void iKeyboard(unsigned char key) {
                 break;
         }
     }
+}
+
+void testFunctionParsing() {
+    float A, B, C, D;
+    float a4, a3, a2, a1, a0;
+
+    // Test trig functions
+    printf("\nTesting Trig Functions:\n");
+    readTrigFunction("y = sin(x)", &A, &B, &C, &D, "sin");
+    printf("sin(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+    
+    readTrigFunction("y = sin(x) - 5", &A, &B, &C, &D, "sin");
+    printf("sin(x) - 5: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+
+    // Test exponential
+    printf("\nTesting Exponential:\n");
+    readExponentialFunction("y = exp(x)", &A, &B, &C, &D);
+    printf("exp(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+    
+    readExponentialFunction("y = exp(x) - 2", &A, &B, &C, &D);
+    printf("exp(x) - 2: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+
+    // Test logarithmic
+    printf("\nTesting Logarithmic:\n");
+    readLogFunction("y = ln(x)", &A, &B, &C, &D, "ln");
+    printf("ln(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+    
+    readLogFunction("y = ln(x) - 3", &A, &B, &C, &D, "ln");
+    printf("ln(x) - 3: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
+
+    // Test polynomial
+    printf("\nTesting Polynomial:\n");
+    readPolynomial("y = x^2", &a4, &a3, &a2, &a1, &a0);
+    printf("x^2: a4=%.1f, a3=%.1f, a2=%.1f, a1=%.1f, a0=%.1f\n", 
+            a4, a3, a2, a1, a0);
+    
+    readPolynomial("y = x^2 - 2x + 1", &a4, &a3, &a2, &a1, &a0);
+    printf("x^2 - 2x + 1: a4=%.1f, a3=%.1f, a2=%.1f, a1=%.1f, a0=%.1f\n", 
+           a4, a3, a2, a1, a0);
 }
 
 void iMouse(int button, int state, int mx, int my) {
