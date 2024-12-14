@@ -70,7 +70,7 @@ bool showParabola = false;
 bool showHyperbola = false;
 bool showHelpScreen = false;
 bool isSettingColor = false;
-bool showGridFlag = true;
+bool showGridFlag = false;
 bool isEnteringEquation = false;
 bool isPanning = false;
 
@@ -1291,12 +1291,115 @@ void drawUI() {
     // Only show basic instructions when no special mode is active
     if (!isSettingColor && !isEnteringEquation && !showPresetMenu) {
         iSetColor(255, 255, 255);
-        // Show minimal help text
-        iText(10, WINDOW_HEIGHT - 20, "Press 'h' for help | 'p' for presets | 'c' for colors | 1-9,0,-,= for functions");
-        
+        // Show minimal help text at top
+        iText(10, WINDOW_HEIGHT - 20, "Press 'h' for help | 'p' for presets | 'c' for colors | 'g' to toggle grid");
+        iText(10, WINDOW_HEIGHT - 40, "Press 1-9,0,-,= to input functions | 'x' to clear all");
         char zoomText[50];
         sprintf(zoomText, "Zoom: %.2f", scaleX);
-        iText(10, WINDOW_HEIGHT - 40, zoomText);
+        iText(10, WINDOW_HEIGHT - 60, zoomText);
+
+        // Show active functions and their coefficients
+        int yPos = WINDOW_HEIGHT - 100;
+        iText(10, yPos, "Active Functions:"); yPos -= 20;
+        
+        if (showSin) {
+            iSetColor(colorSin.r, colorSin.g, colorSin.b);
+            char eqn[100];
+            sprintf(eqn, "sin: %.1f*sin(%.1f*x + %.1f) + %.1f", 
+                   customSin.A, customSin.B, customSin.C, customSin.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showCos) {
+            iSetColor(colorCos.r, colorCos.g, colorCos.b);
+            char eqn[100];
+            sprintf(eqn, "cos: %.1f*cos(%.1f*x + %.1f) + %.1f", 
+                   customCos.A, customCos.B, customCos.C, customCos.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showTan) {
+            iSetColor(colorTan.r, colorTan.g, colorTan.b);
+            char eqn[100];
+            sprintf(eqn, "tan: %.1f*tan(%.1f*x + %.1f) + %.1f", 
+                   customTan.A, customTan.B, customTan.C, customTan.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showASin) {
+            iSetColor(colorASin.r, colorASin.g, colorASin.b);
+            char eqn[100];
+            sprintf(eqn, "arcsin: %.1f*arcsin(%.1f*x + %.1f) + %.1f", 
+                   customASin.A, customASin.B, customASin.C, customASin.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showACos) {
+            iSetColor(colorACos.r, colorACos.g, colorACos.b);
+            char eqn[100];
+            sprintf(eqn, "arccos: %.1f*arccos(%.1f*x + %.1f) + %.1f", 
+                   customACos.A, customACos.B, customACos.C, customACos.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showATan) {
+            iSetColor(colorATan.r, colorATan.g, colorATan.b);
+            char eqn[100];
+            sprintf(eqn, "arctan: %.1f*arctan(%.1f*x + %.1f) + %.1f", 
+                   customATan.A, customATan.B, customATan.C, customATan.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showExp) {
+            iSetColor(colorExp.r, colorExp.g, colorExp.b);
+            char eqn[100];
+            sprintf(eqn, "exp: %.1f*exp(%.1f*x + %.1f) + %.1f", 
+                   customExp.A, customExp.B, customExp.C, customExp.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showLog) {
+            iSetColor(colorLog.r, colorLog.g, colorLog.b);
+            char eqn[100];
+            sprintf(eqn, "log: %.1f*log(%.1f*x + %.1f) + %.1f", 
+                   customLog.A, customLog.B, customLog.C, customLog.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showLn) {
+            iSetColor(colorLn.r, colorLn.g, colorLn.b);
+            char eqn[100];
+            sprintf(eqn, "ln: %.1f*ln(%.1f*x + %.1f) + %.1f", 
+                   customLn.A, customLn.B, customLn.C, customLn.D);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showPoly) {
+            iSetColor(colorPoly.r, colorPoly.g, colorPoly.b);
+            char eqn[100];
+            sprintf(eqn, "poly: %.1fx^4 + %.1fx^3 + %.1fx^2 + %.1fx + %.1f", 
+                   customPoly.a4, customPoly.a3, customPoly.a2, customPoly.a1, customPoly.a0);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showCircle) {
+            iSetColor(colorCircle.r, colorCircle.g, colorCircle.b);
+            char eqn[100];
+            sprintf(eqn, "circle: (x-%0.1f)^2 + (y-%0.1f)^2 = %0.1f^2", 
+                   customCircle.h, customCircle.k, customCircle.r);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showEllipse) {
+            iSetColor(colorEllipse.r, colorEllipse.g, colorEllipse.b);
+            char eqn[100];
+            sprintf(eqn, "ellipse: (x-%0.1f)^2/%0.1f^2 + (y-%0.1f)^2/%0.1f^2 = 1", 
+                   customEllipse.h, customEllipse.a, customEllipse.k, customEllipse.b);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showParabola) {
+            iSetColor(colorParabola.r, colorParabola.g, colorParabola.b);
+            char eqn[100];
+            sprintf(eqn, "parabola: y = %.1fx^2 + %.1fx + %.1f", 
+                   customParabola.a, customParabola.b, customParabola.c);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
+        if (showHyperbola) {
+            iSetColor(colorHyperbola.r, colorHyperbola.g, colorHyperbola.b);
+            char eqn[100];
+            sprintf(eqn, "hyperbola: (x-%0.1f)^2/%0.1f^2 - (y-%0.1f)^2/%0.1f^2 = 1", 
+                   customHyperbola.h, customHyperbola.a, customHyperbola.k, customHyperbola.b);
+            iText(10, yPos, eqn); yPos -= 20;
+        }
     }
 
     // Show help screen when activated
@@ -1458,6 +1561,24 @@ void drawUI() {
     }
 }
 
+// Add clear all function before iKeyboard:
+void clearAllGraphs() {
+    showSin = false;
+    showCos = false;
+    showTan = false;
+    showASin = false;
+    showACos = false;
+    showATan = false;
+    showExp = false;
+    showLog = false;
+    showLn = false;
+    showPoly = false;
+    showCircle = false;
+    showEllipse = false;
+    showParabola = false;
+    showHyperbola = false;
+}
+
 void iKeyboard(unsigned char key) {
 
     bool isWaitingForInput = isSettingColor || isEnteringEquation || showPresetMenu;
@@ -1538,17 +1659,14 @@ void iKeyboard(unsigned char key) {
             switch (key) {
                 case '1':
                     strcpy(currentFunction, "arcsin");
-                    showASin = false;
                     isEnteringEquation = true;
                     break;
                 case '2':
                     strcpy(currentFunction, "arccos");
-                    showACos = false;
                     isEnteringEquation = true;
                     break;
                 case '3':
                     strcpy(currentFunction, "arctan");
-                    showATan = false;
                     isEnteringEquation = true;
                     break;
                 case 27: // ESC key
@@ -1565,77 +1683,155 @@ void iKeyboard(unsigned char key) {
             if (strcmp(currentFunction, "sin") == 0) {
                 success = readTrigFunction(equationInput, &customSin.A, &customSin.B, 
                                         &customSin.C, &customSin.D, "sin");
-                if (success) showSin = true;
+                if (success) {
+                    showSin = false; // Clear old graph only after successful input
+                    showSin = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "cos") == 0) {
                 success = readTrigFunction(equationInput, &customCos.A, &customCos.B, 
                                         &customCos.C, &customCos.D, "cos");
-                if (success) showCos = true;
+                if (success) {
+                    showCos = false; // Clear old graph only after successful input
+                    showCos = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "tan") == 0) {
                 success = readTrigFunction(equationInput, &customTan.A, &customTan.B, 
                                         &customTan.C, &customTan.D, "tan");
-                if (success) showTan = true;
+                if (success) {
+                    showTan = false; // Clear old graph only after successful input
+                    showTan = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "arcsin") == 0) {
                 success = readInverseTrigFunction(equationInput, &customASin.A, &customASin.B, 
                                                 &customASin.C, &customASin.D, funcType);
-                if (success) showASin = true;
+                if (success) {
+                    showASin = false; // Clear old graph only after successful input
+                    showASin = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "arccos") == 0) {
                 success = readInverseTrigFunction(equationInput, &customACos.A, &customACos.B, 
                                                 &customACos.C, &customACos.D, funcType);
-                if (success) showACos = true;
+                if (success) {
+                    showACos = false; // Clear old graph only after successful input
+                    showACos = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "arctan") == 0) {
                 success = readInverseTrigFunction(equationInput, &customATan.A, &customATan.B, 
                                                 &customATan.C, &customATan.D, funcType);
-                if (success) showATan = true;
+                if (success) {
+                    showATan = false; // Clear old graph only after successful input
+                    showATan = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "exp") == 0) {
-                success = readExponentialFunction(equationInput, &customExp.A, &customExp.B, &customExp.C, &customExp.D);
-                if (success) showExp = true;
+                success = readExponentialFunction(equationInput, &customExp.A, &customExp.B, 
+                                               &customExp.C, &customExp.D);
+                if (success) {
+                    showExp = false; // Clear old graph only after successful input
+                    showExp = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "log") == 0) {
-                success = readLogFunction(equationInput, &customLog.A, &customLog.B, &customLog.C, &customLog.D, "log");
-                if (success) showLog = true;
+                success = readLogFunction(equationInput, &customLog.A, &customLog.B, 
+                                       &customLog.C, &customLog.D, "log");
+                if (success) {
+                    showLog = false; // Clear old graph only after successful input
+                    showLog = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "ln") == 0) {
-                success = readLogFunction(equationInput, &customLn.A, &customLn.B, &customLn.C, &customLn.D, "ln");
-                if (success) showLn = true;
+                success = readLogFunction(equationInput, &customLn.A, &customLn.B, 
+                                       &customLn.C, &customLn.D, "ln");
+                if (success) {
+                    showLn = false; // Clear old graph only after successful input
+                    showLn = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "poly") == 0) {
-                success = readPolynomial(equationInput, &customPoly.a4, &customPoly.a3, &customPoly.a2, &customPoly.a1, &customPoly.a0);
-                if (success) showPoly = true;
+                success = readPolynomial(equationInput, &customPoly.a4, &customPoly.a3, 
+                                      &customPoly.a2, &customPoly.a1, &customPoly.a0);
+                if (success) {
+                    showPoly = false; // Clear old graph only after successful input
+                    showPoly = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "circle") == 0) {
-                success = readCircle(equationInput, &customCircle.h, &customCircle.k, &customCircle.r);
-                if (success) showCircle = true;
+                success = readCircle(equationInput, &customCircle.h, &customCircle.k, 
+                                  &customCircle.r);
+                if (success) {
+                    showCircle = false; // Clear old graph only after successful input
+                    showCircle = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "ellipse") == 0) {
-                success = readEllipse(equationInput, &customEllipse.h, &customEllipse.k, &customEllipse.a, &customEllipse.b);
-                if (success) showEllipse = true;
+                success = readEllipse(equationInput, &customEllipse.h, &customEllipse.k, 
+                                   &customEllipse.a, &customEllipse.b);
+                if (success) {
+                    showEllipse = false; // Clear old graph only after successful input
+                    showEllipse = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "parabola") == 0) {
-                success = readParabola(equationInput, &customParabola.a, &customParabola.b, &customParabola.c);
-                if (success) showParabola = true;
+                success = readParabola(equationInput, &customParabola.a, &customParabola.b, 
+                                    &customParabola.c);
+                if (success) {
+                    showParabola = false; // Clear old graph only after successful input
+                    showParabola = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
             else if (strcmp(currentFunction, "hyperbola") == 0) {
-                success = readHyperbola(equationInput, &customHyperbola.h, &customHyperbola.k, &customHyperbola.a, &customHyperbola.b);
-                if (success) showHyperbola = true;
+                success = readHyperbola(equationInput, &customHyperbola.h, &customHyperbola.k, 
+                                    &customHyperbola.a, &customHyperbola.b);
+                if (success) {
+                    showHyperbola = false; // Clear old graph only after successful input
+                    showHyperbola = true;  // Show new graph
+                    isEnteringEquation = false;
+                    equationInput[0] = '\0';
+                }
             }
 
-            if (success) {
-                isEnteringEquation = false;
-                equationInput[0] = '\0';
-            }
-            else {
-                strcpy(equationInput, "Invalid equation! Press ESC and try again.");
+            if (!success) {
+                strcpy(equationInput, "Invalid equation! Press ESC to clear and try again");
             }
         }
         else if (key == 27) { // ESC key
-            isEnteringEquation = false;
-            equationInput[0] = '\0';
+            if (strstr(equationInput, "Invalid equation!")) {
+                equationInput[0] = '\0'; // Clear error message and allow retry
+            } else {
+                isEnteringEquation = false;
+                equationInput[0] = '\0';
+            }
         }
         else if (key == '\b') { // Backspace
             int len = strlen(equationInput);
@@ -1644,9 +1840,12 @@ void iKeyboard(unsigned char key) {
             }
         }
         else if (isprint(key) && strlen(equationInput) < MAX_INPUT_LENGTH - 1) {
-            int len = strlen(equationInput);
-            equationInput[len] = key;
-            equationInput[len + 1] = '\0';
+            // Only allow new input if there's no error message
+            if (!strstr(equationInput, "Invalid equation!")) {
+                int len = strlen(equationInput);
+                equationInput[len] = key;
+                equationInput[len + 1] = '\0';
+            }
         }
         return;  // Early return to prevent other handlers
     }
@@ -1658,68 +1857,53 @@ void iKeyboard(unsigned char key) {
                 showHelpScreen = !showHelpScreen;
                 break;
             case '1': 
+                strcpy(currentFunction, "sin");
+                isEnteringEquation = true;
+                break;
             case '2':
+                strcpy(currentFunction, "cos");
+                isEnteringEquation = true;
+                break;
             case '3':
+                strcpy(currentFunction, "tan");
+                isEnteringEquation = true;
+                break;
             case '4':
+                strcpy(currentFunction, "poly");
+                isEnteringEquation = true;
+                break;
             case '5':
+                strcpy(currentFunction, "circle");
+                isEnteringEquation = true;
+                break;
             case '6':
+                strcpy(currentFunction, "ellipse");
+                isEnteringEquation = true;
+                break;
             case '7':
+                strcpy(currentFunction, "parabola");
+                isEnteringEquation = true;
+                break;
             case '8':
+                strcpy(currentFunction, "hyperbola");
+                isEnteringEquation = true;
+                break;
             case '9':
+                strcpy(currentFunction, "exp");
+                isEnteringEquation = true;
+                break;
             case '0':
+                strcpy(currentFunction, "log");
+                isEnteringEquation = true;
+                break;
             case '-':
+                strcpy(currentFunction, "ln");
+                isEnteringEquation = true;
+                break;
             case '=':
-                // ...existing equation selection code...
-                if (key == '1') {
-                    strcpy(currentFunction, "sin"); 
-                    showSin = false; 
-                    isEnteringEquation = true;
-                } else if (key == '2') {
-                    strcpy(currentFunction, "cos"); 
-                    showCos = false; 
-                    isEnteringEquation = true;
-                } else if (key == '3') {
-                    strcpy(currentFunction, "tan"); 
-                    showTan = false; 
-                    isEnteringEquation = true;
-                } else if (key == '4') {
-                    strcpy(currentFunction, "poly"); 
-                    showPoly = false; 
-                    isEnteringEquation = true;
-                } else if (key == '5') {
-                    strcpy(currentFunction, "circle"); 
-                    showCircle = false; 
-                    isEnteringEquation = true;
-                } else if (key == '6') {
-                    strcpy(currentFunction, "ellipse"); 
-                    showEllipse = false; 
-                    isEnteringEquation = true;
-                } else if (key == '7') {
-                    strcpy(currentFunction, "parabola"); 
-                    showParabola = false; 
-                    isEnteringEquation = true;
-                } else if (key == '8') {
-                    strcpy(currentFunction, "hyperbola"); 
-                    showHyperbola = false; 
-                    isEnteringEquation = true;
-                } else if (key == '9') {
-                    strcpy(currentFunction, "exp"); 
-                    showExp = false; 
-                    isEnteringEquation = true;
-                } else if (key == '0') {
-                    strcpy(currentFunction, "log"); 
-                    showLog = false; 
-                    isEnteringEquation = true;
-                } else if (key == '-') {
-                    strcpy(currentFunction, "ln"); 
-                    showLn = false; 
-                    isEnteringEquation = true;
-                } else if (key == '=') {
-                    // Show inverse trig menu
-                    strcpy(currentFunction, "inverse_trig_menu");
-                    isEnteringEquation = true;  // Set this to true so the menu can be processed
-                    equationInput[0] = '\0';    // Clear any existing input
-                }
+                strcpy(currentFunction, "inverse_trig_menu");
+                isEnteringEquation = true;
+                equationInput[0] = '\0';
                 break;
             case 'c': 
                 isSettingColor = true;
@@ -1747,50 +1931,14 @@ void iKeyboard(unsigned char key) {
                     step *= 1.1;
                 }
                 break;
+            case 'x':
+                clearAllGraphs();
+                break;
             case 'q':
                 exit(0);
                 break;
         }
     }
-}
-
-void testFunctionParsing() {
-    float A, B, C, D;
-    float a4, a3, a2, a1, a0;
-
-    // Test trig functions
-    printf("\nTesting Trig Functions:\n");
-    readTrigFunction("y = sin(x)", &A, &B, &C, &D, "sin");
-    printf("sin(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-    
-    readTrigFunction("y = sin(x) - 5", &A, &B, &C, &D, "sin");
-    printf("sin(x) - 5: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-
-    // Test exponential
-    printf("\nTesting Exponential:\n");
-    readExponentialFunction("y = exp(x)", &A, &B, &C, &D);
-    printf("exp(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-    
-    readExponentialFunction("y = exp(x) - 2", &A, &B, &C, &D);
-    printf("exp(x) - 2: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-
-    // Test logarithmic
-    printf("\nTesting Logarithmic:\n");
-    readLogFunction("y = ln(x)", &A, &B, &C, &D, "ln");
-    printf("ln(x): A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-    
-    readLogFunction("y = ln(x) - 3", &A, &B, &C, &D, "ln");
-    printf("ln(x) - 3: A=%.1f, B=%.1f, C=%.1f, D=%.1f\n", A, B, C, D);
-
-    // Test polynomial
-    printf("\nTesting Polynomial:\n");
-    readPolynomial("y = x^2", &a4, &a3, &a2, &a1, &a0);
-    printf("x^2: a4=%.1f, a3=%.1f, a2=%.1f, a1=%.1f, a0=%.1f\n", 
-            a4, a3, a2, a1, a0);
-    
-    readPolynomial("y = x^2 - 2x + 1", &a4, &a3, &a2, &a1, &a0);
-    printf("x^2 - 2x + 1: a4=%.1f, a3=%.1f, a2=%.1f, a1=%.1f, a0=%.1f\n", 
-           a4, a3, a2, a1, a0);
 }
 
 void iMouse(int button, int state, int mx, int my) {
@@ -1805,8 +1953,8 @@ void iMouse(int button, int state, int mx, int my) {
 
 void iMouseMove(int mx, int my) {
     if (isPanning) {
-        offsetX -= (mx - lastMouseX) / scaleX;
-        offsetY -= (my - lastMouseY) / scaleY;
+        offsetX += (mx - lastMouseX) / scaleX;  
+        offsetY += (my - lastMouseY) / scaleY; 
         lastMouseX = mx;
         lastMouseY = my;
     }
